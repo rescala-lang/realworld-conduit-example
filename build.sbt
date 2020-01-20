@@ -27,13 +27,15 @@ lazy val server = project
     "io.javalin" % "javalin" % "3.6.0"
     ),
   fork := true,
-//javaOptions += "-agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image"
+  // must run sbt with graalvm to work
+javaOptions += "-agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image",
 graalVMNativeImageOptions ++= List(
-  //"--allow-incomplete-classpath",
-  //"--no-fallback",
+  "--allow-incomplete-classpath",
+  "--no-fallback",
   //"--report-unsupported-elements-at-runtime",
-  //"--initialize-at-build-time",
-  "-H:+ReportExceptionStackTraces"
+  "--initialize-at-build-time",
+  "-H:+ReportExceptionStackTraces",
+  "-H:+JNI"
   ),
   )
 .enablePlugins(JavaServerAppPackaging)
