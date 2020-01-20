@@ -1,38 +1,89 @@
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.security.MessageDigest
+
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 import Settings._
+import Dependencies._
 
-name := "realworld"
-organization := "de.rmgk"
-scalaVersion_213
 
-bloopExportJarClassifiers in Global := Some(Set("sources"))
+inThisBuild(scalaVersion_212)
+inThisBuild(strictCompile)
+ThisBuild / organization := "de.rmgk"
 
-libraryDependencies ++= Seq(
+bloopSources
+
+lazy val server = project
+.in(file("server"))
+.settings(
+  name := "server",
+  toml,
+  upickle,
+  betterFiles,
+  scribe,
+  scalatags,
+  libraryDependencies ++= Seq(
     "com.outr" %% "scribe-slf4j" % "2.7.10",
     "io.javalin" % "javalin" % "3.6.0"
-)
-
-Dependencies.toml
-Dependencies.upickle
-Dependencies.betterFiles
-Dependencies.scribe
-
-
-fork := true
-javaOptions += "-agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image"
+    ),
+  fork := true,
+//javaOptions += "-agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image"
 graalVMNativeImageOptions ++= List(
   //"--allow-incomplete-classpath",
   //"--no-fallback",
   //"--report-unsupported-elements-at-runtime",
   //"--initialize-at-build-time",
   "-H:+ReportExceptionStackTraces"
+  ),
+  )
+.enablePlugins(JavaServerAppPackaging)
+.enablePlugins(GraalVMNativeImagePlugin)
+.dependsOn(sharedJVM)
+.dependsOn(rescalaJVM)
+.dependsOn(lociCommunicatorWsJavalinJVM)
+
+
+lazy val app = project
+.in(file("app"))
+.enablePlugins(ScalaJSPlugin)
+.settings(
+  name := "app",
+  scalaJSUseMainModuleInitializer := true
+  )
+.dependsOn(sharedJS)
+.dependsOn(rescalatags)
+.dependsOn(lociCommunicatorWsJavalinJS)
+.enablePlugins(SbtSassify)
+
+lazy val shared = crossProject(JSPlatform, JVMPlatform)
+.crossType(CrossType.Pure).in(file("common"))
+.settings(
+  name := "common",
   )
 
+lazy val sharedJVM = shared.jvm
+lazy val sharedJS  = shared.js
 
-enablePlugins(JavaAppPackaging)
-enablePlugins(GraalVMNativeImagePlugin)
+
+
+
+
+
 
 lazy val nativeImage = taskKey[File]("calls graalvm native image")
 
-nativeImage := (GraalVMNativeImage / packageBin).value
+nativeImage := (server / GraalVMNativeImage / packageBin).value
 
+
+
+
+lazy val rescalaRepo = uri("../REScala")
+lazy val rescalatags = ProjectRef(rescalaRepo, "rescalaJS")
+lazy val rescalaJVM  = ProjectRef(rescalaRepo, "rescalaJVM")
+lazy val crdtsJVM    = ProjectRef(rescalaRepo, "crdtsJVM")
+lazy val crdtsJS     = ProjectRef(rescalaRepo, "crdtsJS")
+
+lazy val lociRepo = uri("../loci")
+lazy val lociCommunicatorWsJavalinJVM = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJVM")
+lazy val lociCommunicatorWsJavalinJS = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJS")
 
