@@ -12,6 +12,7 @@ import scalatags.JsDom.tags.body
 import scala.scalajs.js.URIUtils.decodeURIComponent
 import org.scalajs.dom.raw.HashChangeEvent
 import org.scalajs.dom.experimental.URL
+import scalatags.jsdom.Frag
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
@@ -36,13 +37,13 @@ object ConduitFrontend {
   val replicaID: Id = IdUtil.genId()
 
   def main(args: Array[String]): Unit = {
-    dom.document.body = body(Templates.nav,
+    dom.document.body = body(Templates.navTag(Navigation.currentAppState),
                                  Navigation.currentAppState.map {
                                    case Index            => Templates.home
                                    case Settings         => Templates.settings
                                    case Login | Register => Templates.login
                                  }.asModifier,
-                                 Templates.footer)
+                                 Templates.footer).render
     //val bodyParent = dom.document.body.parentElement
     //bodyParent.removeChild(dom.document.body)
     //bodySignal.asModifier.applyTo(bodyParent)
@@ -51,11 +52,13 @@ object ConduitFrontend {
 
 object Navigation {
 
-  sealed trait AppState
-  case object Index extends AppState
-  case object Settings extends AppState
-  case object Login extends AppState
-  case object Register extends AppState
+  sealed abstract class AppState(val urlhash: String) {
+    def url = s"#$urlhash"
+  }
+  case object Index extends AppState("")
+  case object Settings extends AppState("settings")
+  case object Login extends AppState("login")
+  case object Register extends AppState("register")
 
   def pathToState(path: String): AppState = {
     val paths = List(path.substring(1).split("/"): _*)

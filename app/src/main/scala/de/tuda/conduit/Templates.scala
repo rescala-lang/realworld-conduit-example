@@ -1,36 +1,33 @@
 package de.tuda.conduit
 
+import de.tuda.conduit.Navigation.AppState
 import scalatags.JsDom.all._
+import scalatags.JsDom.tags2._
+import rescala.default._
+import rescala.extra.Tags._
 
 object Templates {
 
-  val nav: RawFrag = raw("""
-     <nav class="navbar navbar-light">
-      <div class="container">
-        <a class="navbar-brand" href="index.html">conduit</a>
-        <ul class="nav navbar-nav pull-xs-right">
-          <li class="nav-item">
-            <!-- Add "active" class when you're on that page" -->
-            <a class="nav-link active" href="">Home</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="">
-              <i class="ion-compose"></i>&nbsp;New Post
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="">
-              <i class="ion-gear-a"></i>&nbsp;Settings
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="">Sign up</a>
-          </li>
-        </ul>
-      </div>
-    </nav>""")
+  def navTag(currentPlace: Signal[AppState]) = nav(`class` := "navbar navbar-light",
+                   div(`class` := "container",
+                       a(`class` := "navbar-brand", href := Navigation.Index.url, "conduit"),
+                       ul(`class` := "nav navbar-nav pull-xs-right")(
+                         List(
+                           Navigation.Index -> raw("""Home"""),
+                           //Navigation.NewPost -> raw("""<i class="ion-compose"></i>&nbsp;New Post"""),
+                           Navigation.Settings -> raw("""<i class="ion-gear-a"></i>&nbsp;Settings"""),
+                           Navigation.Login -> raw("""Log in"""),
+                           Navigation.Register -> raw("""Sign up""")
+                           ).map { case (place, description) =>
+                           li(
+                             `class` := currentPlace.map { as =>
+                               (if (as == place) "nav-item active" else "nav-item")
+                             },
+                             a(`class` := "nav-link", href := place.url, description))
+                         }: _*
+                         )))
 
-  val footer: RawFrag = raw("""    <footer>
+  val footer = raw("""    <footer>
       <div class="container">
         <a href="/" class="logo-font">conduit</a>
         <span class="attribution">
@@ -39,8 +36,7 @@ object Templates {
       </div>
     </footer>""")
 
-  val home: RawFrag = raw("""<div class="home-page">
-
+  val home = div(`class` := "home-page", raw("""
   <div class="banner">
     <div class="container">
       <h1 class="logo-font">conduit</h1>
@@ -119,11 +115,9 @@ object Templates {
       </div>
 
     </div>
-  </div>
+  </div>"""))
 
-</div>""")
-
-  val login: RawFrag = raw("""<div class="auth-page">
+  val login = div(`class` := "auth-page", raw("""
   <div class="container page">
     <div class="row">
 
@@ -154,11 +148,9 @@ object Templates {
       </div>
 
     </div>
-  </div>
-</div>""")
+  </div>"""))
 
-  val profile: RawFrag = raw("""<div class="profile-page">
-
+  val profile = div(`class` := "profile-page", raw("""
   <div class="user-info">
     <div class="container">
       <div class="row">
@@ -239,11 +231,9 @@ object Templates {
       </div>
 
     </div>
-  </div>
+  </div>"""))
 
-</div>""")
-
-  val settings: RawFrag = raw("""<div class="settings-page">
+  val settings = div(`class` := "settings-page", raw("""
   <div class="container page">
     <div class="row">
 
@@ -275,10 +265,9 @@ object Templates {
       </div>
 
     </div>
-  </div>
-</div>""")
+  </div>"""))
 
-  val createEdit: RawFrag = raw("""<div class="editor-page">
+  val createEdit = div(`class` := "editor-page", raw("""
   <div class="container page">
     <div class="row">
 
@@ -305,12 +294,9 @@ object Templates {
       </div>
 
     </div>
-  </div>
-</div>
-""")
+  </div>"""))
 
-  val article: RawFrag = raw("""<div class="article-page">
-
+  val article = div(`class` := "article-page", raw("""
   <div class="banner">
     <div class="container">
 
@@ -426,7 +412,5 @@ object Templates {
 
     </div>
 
-  </div>
-
-</div>""")
+  </div>"""))
 }
