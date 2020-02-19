@@ -16,6 +16,11 @@ import scalatags.jsdom.Frag
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
+import org.scalajs.dom.experimental.Fetch
+import upickle.default.ReadWriter
+
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 
 //@JSImport("localforage", JSImport.Namespace)
@@ -31,19 +36,70 @@ trait LocalForageInstance extends js.Object {
   def getItem[T](key: String): js.Promise[T] = js.native
 }
 
+object API {
+  val baseurl = "https://conduit.productionready.io/api"
+
+
+  case class Author(username: String,
+                    bio: String,
+                    image: String,
+                    following: Boolean) {
+    def url: String = Navigation.Author(username).url
+  }
+
+  case class Article(slug: String,
+                     title: String,
+                     description: String,
+                     body: String,
+                     tagList: List[String],
+                     createdAt: String,
+                     updatedAt: String,
+                     favorited: Boolean,
+                     favoritesCount: Int,
+                     author: Author) {
+
+    def url: String = Navigation.Reader(slug).url
+  }
+
+  case class ArticleList(articles: List[Article], articlesCount: Int)
+
+  implicit val AuthorRW     : ReadWriter[Author]      = upickle.default.macroRW
+  implicit val ArticleRW    : ReadWriter[Article]     = upickle.default.macroRW
+  implicit val ArticleListRW: ReadWriter[ArticleList] = upickle.default.macroRW
+
+  def articles(): Future[List[Article]] =
+    Fetch.fetch(baseurl + "/articles").toFuture.flatMap(_.text().toFuture)
+         .map { response =>
+           println(response)
+           upickle.default.read[ArticleList](response).articles
+         }
+
+}
+
 
 object ConduitFrontend {
+
 
   val replicaID: Id = IdUtil.genId()
 
   def main(args: Array[String]): Unit = {
+
+    val mainArticles = Signals.fromFuture(API.articles())
+
+
     dom.document.body = body(Templates.navTag(Navigation.currentAppState),
-                                 Navigation.currentAppState.map {
-                                   case Index            => Templates.home
-                                   case Settings         => Templates.settings
-                                   case Login | Register => Templates.login
-                                 }.asModifier,
-                                 Templates.footer).render
+                             Navigation.currentAppState.map {
+                               case Index            => Templates.articleList(mainArticles)
+                               case Settings         => Templates.settings
+                               case Login | Register => Templates.login
+                               case Compose          => Templates.createEdit
+                               case Author(username) => Templates.login
+                               case Reader(slug) => Templates.login
+                             }.asModifier,
+                             Templates.footerTag).render
+
+    println("fetching arrticles")
+
     //val bodyParent = dom.document.body.parentElement
     //bodyParent.removeChild(dom.document.body)
     //bodySignal.asModifier.applyTo(bodyParent)
@@ -59,6 +115,10 @@ object Navigation {
   case object Settings extends AppState("settings")
   case object Login extends AppState("login")
   case object Register extends AppState("register")
+  case object Compose extends AppState("compose")
+  case class Author(username: String) extends AppState(s"profile/$username")
+  case class Reader(slug: String) extends AppState(s"reader/$slug")
+
 
   def pathToState(path: String): AppState = {
     val paths = List(path.substring(1).split("/"): _*)
@@ -68,6 +128,7 @@ object Navigation {
       case "settings" :: Nil => Settings
       case "login" :: Nil    => Login
       case "register" :: Nil => Register
+      case "compose" :: Nil  => Compose
       case _                 => Index
     }
   }

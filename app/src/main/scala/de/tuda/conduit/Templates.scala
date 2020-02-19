@@ -1,5 +1,6 @@
 package de.tuda.conduit
 
+import de.tuda.conduit.API.Article
 import de.tuda.conduit.Navigation.AppState
 import scalatags.JsDom.all._
 import scalatags.JsDom.tags2._
@@ -8,114 +9,97 @@ import rescala.extra.Tags._
 
 object Templates {
 
-  def navTag(currentPlace: Signal[AppState]) = nav(`class` := "navbar navbar-light",
-                   div(`class` := "container",
-                       a(`class` := "navbar-brand", href := Navigation.Index.url, "conduit"),
-                       ul(`class` := "nav navbar-nav pull-xs-right")(
-                         List(
-                           Navigation.Index -> raw("""Home"""),
-                           //Navigation.NewPost -> raw("""<i class="ion-compose"></i>&nbsp;New Post"""),
-                           Navigation.Settings -> raw("""<i class="ion-gear-a"></i>&nbsp;Settings"""),
-                           Navigation.Login -> raw("""Log in"""),
-                           Navigation.Register -> raw("""Sign up""")
-                           ).map { case (place, description) =>
-                           li(
-                             `class` := currentPlace.map { as =>
-                               (if (as == place) "nav-item active" else "nav-item")
-                             },
-                             a(`class` := "nav-link", href := place.url, description))
-                         }: _*
-                         )))
+  def navTag(currentPlace: Signal[AppState]) =
+    nav(`class` := "navbar navbar-light",
+        div(`class` := "container",
+            a(`class` := "navbar-brand", href := Navigation.Index.url, "conduit"),
+            ul(`class` := "nav navbar-nav pull-xs-right")(
+              List(
+                Navigation.Index -> raw("""Home"""),
+                Navigation.Compose -> raw("""<i class="ion-compose"></i>&nbsp;New Post"""),
+                Navigation.Settings -> raw("""<i class="ion-gear-a"></i>&nbsp;Settings"""),
+                Navigation.Login -> raw("""Log in"""),
+                Navigation.Register -> raw("""Sign up""")
+                ).map { case (place, description) =>
+                li(
+                  `class` := currentPlace.map { as =>
+                    (if (as == place) "nav-item active" else "nav-item")
+                  },
+                  a(`class` := "nav-link", href := place.url, description))
+              }: _*
+              )))
 
-  val footer = raw("""    <footer>
+  val footerTag = footer(raw("""
       <div class="container">
         <a href="/" class="logo-font">conduit</a>
         <span class="attribution">
           An interactive learning project from <a href="https://thinkster.io">Thinkster</a>. Code &amp; design licensed under MIT.
         </span>
-      </div>
-    </footer>""")
+      </div>"""))
 
-  val home = div(`class` := "home-page", raw("""
+  def articleList(articles: Signal[List[Article]]) = {
+    val headerBannerTag = raw("""
   <div class="banner">
     <div class="container">
       <h1 class="logo-font">conduit</h1>
       <p>A place to share your knowledge.</p>
     </div>
-  </div>
+  </div>""")
 
-  <div class="container page">
-    <div class="row">
+    def tagsTag = raw("""
+        <div class="col-md-3">
+          <div class="sidebar">
+            <p>Popular Tags</p>
 
-      <div class="col-md-9">
-        <div class="feed-toggle">
-          <ul class="nav nav-pills outline-active">
-            <li class="nav-item">
-              <a class="nav-link disabled" href="">Your Feed</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link active" href="">Global Feed</a>
-            </li>
-          </ul>
-        </div>
-
-        <div class="article-preview">
-          <div class="article-meta">
-            <a href="profile.html"><img src="http://i.imgur.com/Qr71crq.jpg" /></a>
-            <div class="info">
-              <a href="" class="author">Eric Simons</a>
-              <span class="date">January 20th</span>
+            <div class="tag-list">
+              <a href="" class="tag-pill tag-default">programming</a>
+              <a href="" class="tag-pill tag-default">javascript</a>
+              <a href="" class="tag-pill tag-default">emberjs</a>
+              <a href="" class="tag-pill tag-default">angularjs</a>
+              <a href="" class="tag-pill tag-default">react</a>
+              <a href="" class="tag-pill tag-default">mean</a>
+              <a href="" class="tag-pill tag-default">node</a>
+              <a href="" class="tag-pill tag-default">rails</a>
             </div>
-            <button class="btn btn-outline-primary btn-sm pull-xs-right">
-              <i class="ion-heart"></i> 29
-            </button>
           </div>
-          <a href="" class="preview-link">
-            <h1>How to build webapps that scale</h1>
-            <p>This is the description for the post.</p>
-            <span>Read more...</span>
-          </a>
-        </div>
+        </div>""")
 
-        <div class="article-preview">
-          <div class="article-meta">
-            <a href="profile.html"><img src="http://i.imgur.com/N4VcUeJ.jpg" /></a>
-            <div class="info">
-              <a href="" class="author">Albert Pai</a>
-              <span class="date">January 20th</span>
-            </div>
-            <button class="btn btn-outline-primary btn-sm pull-xs-right">
-              <i class="ion-heart"></i> 32
-            </button>
-          </div>
-          <a href="" class="preview-link">
-            <h1>The song you won't ever stop singing. No matter how hard you try.</h1>
-            <p>This is the description for the post.</p>
-            <span>Read more...</span>
-          </a>
-        </div>
+    def feedToggle = raw("""
+          <div class="feed-toggle">
+            <ul class="nav nav-pills outline-active">
+              <li class="nav-item">
+                <a class="nav-link disabled" href="">Your Feed</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link active" href="">Global Feed</a>
+              </li>
+            </ul>
+          </div>""")
 
-      </div>
+    def articlePreviewTag(article: Article) =
+      div(`class` := "article-preview",
+          div(`class` := "article-meta",
+              a(href := article.author.url,
+                img(src := article.author.image)),
+              div(`class` := "info",
+                  a(href := article.author.url, `class` := "author", article.author.username),
+                  span(`class` := "date", article.createdAt)),
+              button(`class` := "btn btn-outline-primary btn-sm pull-xs-right",
+                     i(`class` := "ion-heart"), article.favoritesCount)
+              ),
+          a(href := article.url, `class` := "preview-link"),
+          h1(article.title), p(article.description), span("Read more ..."))
 
-      <div class="col-md-3">
-        <div class="sidebar">
-          <p>Popular Tags</p>
+    div(`class` := "home-page",
+        headerBannerTag,
+        div(`class` := "container page",
+            div(`class` := "row",
+                div(`class` := "col-md-9",
+                    feedToggle)(
+                  articles.map(_.map(articlePreviewTag)).asModifierL),
+                tagsTag)))
+  }
 
-          <div class="tag-list">
-            <a href="" class="tag-pill tag-default">programming</a>
-            <a href="" class="tag-pill tag-default">javascript</a>
-            <a href="" class="tag-pill tag-default">emberjs</a>
-            <a href="" class="tag-pill tag-default">angularjs</a>
-            <a href="" class="tag-pill tag-default">react</a>
-            <a href="" class="tag-pill tag-default">mean</a>
-            <a href="" class="tag-pill tag-default">node</a>
-            <a href="" class="tag-pill tag-default">rails</a>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>"""))
 
   val login = div(`class` := "auth-page", raw("""
   <div class="container page">
@@ -134,283 +118,303 @@ object Templates {
         <form>
           <fieldset class="form-group">
             <input class="form-control form-control-lg" type="text" placeholder="Your Name">
-          </fieldset>
-          <fieldset class="form-group">
-            <input class="form-control form-control-lg" type="text" placeholder="Email">
-          </fieldset>
-          <fieldset class="form-group">
-            <input class="form-control form-control-lg" type="password" placeholder="Password">
-          </fieldset>
-          <button class="btn btn-lg btn-primary pull-xs-right">
-            Sign up
-          </button>
-        </form>
-      </div>
-
-    </div>
-  </div>"""))
-
-  val profile = div(`class` := "profile-page", raw("""
-  <div class="user-info">
-    <div class="container">
-      <div class="row">
-
-        <div class="col-xs-12 col-md-10 offset-md-1">
-          <img src="http://i.imgur.com/Qr71crq.jpg" class="user-img" />
-          <h4>Eric Simons</h4>
-          <p>
-            Cofounder @GoThinkster, lived in Aol's HQ for a few months, kinda looks like Peeta from the Hunger Games
-          </p>
-          <button class="btn btn-sm btn-outline-secondary action-btn">
-            <i class="ion-plus-round"></i>
-            &nbsp;
-            Follow Eric Simons
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <div class="container">
-    <div class="row">
-
-      <div class="col-xs-12 col-md-10 offset-md-1">
-        <div class="articles-toggle">
-          <ul class="nav nav-pills outline-active">
-            <li class="nav-item">
-              <a class="nav-link active" href="">My Articles</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="">Favorited Articles</a>
-            </li>
-          </ul>
-        </div>
-
-        <div class="article-preview">
-          <div class="article-meta">
-            <a href=""><img src="http://i.imgur.com/Qr71crq.jpg" /></a>
-            <div class="info">
-              <a href="" class="author">Eric Simons</a>
-              <span class="date">January 20th</span>
-            </div>
-            <button class="btn btn-outline-primary btn-sm pull-xs-right">
-              <i class="ion-heart"></i> 29
-            </button>
-          </div>
-          <a href="" class="preview-link">
-            <h1>How to build webapps that scale</h1>
-            <p>This is the description for the post.</p>
-            <span>Read more...</span>
-          </a>
-        </div>
-
-        <div class="article-preview">
-          <div class="article-meta">
-            <a href=""><img src="http://i.imgur.com/N4VcUeJ.jpg" /></a>
-            <div class="info">
-              <a href="" class="author">Albert Pai</a>
-              <span class="date">January 20th</span>
-            </div>
-            <button class="btn btn-outline-primary btn-sm pull-xs-right">
-              <i class="ion-heart"></i> 32
-            </button>
-          </div>
-          <a href="" class="preview-link">
-            <h1>The song you won't ever stop singing. No matter how hard you try.</h1>
-            <p>This is the description for the post.</p>
-            <span>Read more...</span>
-            <ul class="tag-list">
-              <li class="tag-default tag-pill tag-outline">Music</li>
-              <li class="tag-default tag-pill tag-outline">Song</li>
-            </ul>
-          </a>
-        </div>
-
-
-      </div>
-
-    </div>
-  </div>"""))
-
-  val settings = div(`class` := "settings-page", raw("""
-  <div class="container page">
-    <div class="row">
-
-      <div class="col-md-6 offset-md-3 col-xs-12">
-        <h1 class="text-xs-center">Your Settings</h1>
-
-        <form>
-          <fieldset>
-              <fieldset class="form-group">
-                <input class="form-control" type="text" placeholder="URL of profile picture">
-              </fieldset>
-              <fieldset class="form-group">
-                <input class="form-control form-control-lg" type="text" placeholder="Your Name">
-              </fieldset>
-              <fieldset class="form-group">
-                <textarea class="form-control form-control-lg" rows="8" placeholder="Short bio about you"></textarea>
-              </fieldset>
-              <fieldset class="form-group">
-                <input class="form-control form-control-lg" type="text" placeholder="Email">
+            </fieldset>
+            <fieldset class="form-group">
+              <input class="form-control form-control-lg" type="text" placeholder="Email">
               </fieldset>
               <fieldset class="form-group">
                 <input class="form-control form-control-lg" type="password" placeholder="Password">
-              </fieldset>
-              <button class="btn btn-lg btn-primary pull-xs-right">
-                Update Settings
-              </button>
-          </fieldset>
-        </form>
-      </div>
+                </fieldset>
+                <button class="btn btn-lg btn-primary pull-xs-right">
+                  Sign up
+                </button>
+              </form>
+            </div>
 
-    </div>
-  </div>"""))
+          </div>
+        </div>
+        """))
+
+  val profile = div(`class` := "profile-page", raw("""
+        <div class="user-info">
+          <div class="container">
+            <div class="row">
+
+              <div class="col-xs-12 col-md-10 offset-md-1">
+                <img src="http://i.imgur.com/Qr71crq.jpg" class="user-img"/>
+                <h4>Eric Simons</h4>
+                <p>
+                  Cofounder @GoThinkster, lived in Aol's HQ for a few months, kinda looks like Peeta from the Hunger Games
+                </p>
+                <button class="btn btn-sm btn-outline-secondary action-btn">
+                  <i class="ion-plus-round"></i>
+                  &nbsp;
+                  Follow Eric Simons
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="container">
+          <div class="row">
+
+            <div class="col-xs-12 col-md-10 offset-md-1">
+              <div class="articles-toggle">
+                <ul class="nav nav-pills outline-active">
+                  <li class="nav-item">
+                    <a class="nav-link active" href="">My Articles</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="">Favorited Articles</a>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="article-preview">
+                <div class="article-meta">
+                  <a href="">
+                    <img src="http://i.imgur.com/Qr71crq.jpg"/>
+                  </a>
+                  <div class="info">
+                    <a href="" class="author">Eric Simons</a>
+                    <span class="date">January 20th</span>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm pull-xs-right">
+                    <i class="ion-heart"></i>
+                    29
+                  </button>
+                </div>
+                <a href="" class="preview-link">
+                  <h1>How to build webapps that scale</h1>
+                  <p>This is the description for the post.</p>
+                  <span>Read more...</span>
+                </a>
+              </div>
+
+              <div class="article-preview">
+                <div class="article-meta">
+                  <a href="">
+                    <img src="http://i.imgur.com/N4VcUeJ.jpg"/>
+                  </a>
+                  <div class="info">
+                    <a href="" class="author">Albert Pai</a>
+                    <span class="date">January 20th</span>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm pull-xs-right">
+                    <i class="ion-heart"></i>
+                    32
+                  </button>
+                </div>
+                <a href="" class="preview-link">
+                  <h1>The song you won't ever stop singing. No matter how hard you try.</h1>
+                  <p>This is the description for the post.</p>
+                  <span>Read more...</span>
+                  <ul class="tag-list">
+                    <li class="tag-default tag-pill tag-outline">Music</li>
+                    <li class="tag-default tag-pill tag-outline">Song</li>
+                  </ul>
+                </a>
+              </div>
+
+
+            </div>
+
+          </div>
+        </div>
+        """))
+
+  val settings = div(`class` := "settings-page", raw("""
+        <div class="container page">
+          <div class="row">
+
+            <div class="col-md-6 offset-md-3 col-xs-12">
+              <h1 class="text-xs-center">Your Settings</h1>
+
+              <form>
+                <fieldset>
+                  <fieldset class="form-group">
+                    <input class="form-control" type="text" placeholder="URL of profile picture">
+                    </fieldset>
+                    <fieldset class="form-group">
+                      <input class="form-control form-control-lg" type="text" placeholder="Your Name">
+                      </fieldset>
+                      <fieldset class="form-group">
+                        <textarea class="form-control form-control-lg" rows="8" placeholder="Short bio about you"></textarea>
+                      </fieldset>
+                      <fieldset class="form-group">
+                        <input class="form-control form-control-lg" type="text" placeholder="Email">
+                        </fieldset>
+                        <fieldset class="form-group">
+                          <input class="form-control form-control-lg" type="password" placeholder="Password">
+                          </fieldset>
+                          <button class="btn btn-lg btn-primary pull-xs-right">
+                            Update Settings
+                          </button>
+                        </fieldset>
+                      </form>
+                    </div>
+
+                  </div>
+                </div>
+                """))
 
   val createEdit = div(`class` := "editor-page", raw("""
-  <div class="container page">
-    <div class="row">
+                <div class="container page">
+                  <div class="row">
 
-      <div class="col-md-10 offset-md-1 col-xs-12">
-        <form>
-          <fieldset>
-            <fieldset class="form-group">
-                <input type="text" class="form-control form-control-lg" placeholder="Article Title">
-            </fieldset>
-            <fieldset class="form-group">
-                <input type="text" class="form-control" placeholder="What's this article about?">
-            </fieldset>
-            <fieldset class="form-group">
-                <textarea class="form-control" rows="8" placeholder="Write your article (in markdown)"></textarea>
-            </fieldset>
-            <fieldset class="form-group">
-                <input type="text" class="form-control" placeholder="Enter tags"><div class="tag-list"></div>
-            </fieldset>
-            <button class="btn btn-lg pull-xs-right btn-primary" type="button">
-                Publish Article
-            </button>
-          </fieldset>
-        </form>
-      </div>
+                    <div class="col-md-10 offset-md-1 col-xs-12">
+                      <form>
+                        <fieldset>
+                          <fieldset class="form-group">
+                            <input type="text" class="form-control form-control-lg" placeholder="Article Title">
+                            </fieldset>
+                            <fieldset class="form-group">
+                              <input type="text" class="form-control" placeholder="What's this article about?">
+                              </fieldset>
+                              <fieldset class="form-group">
+                                <textarea class="form-control" rows="8" placeholder="Write your article (in markdown)"></textarea>
+                              </fieldset>
+                              <fieldset class="form-group">
+                                <input type="text" class="form-control" placeholder="Enter tags">
+                                  <div class="tag-list"></div>
+                                </fieldset>
+                                <button class="btn btn-lg pull-xs-right btn-primary" type="button">
+                                  Publish Article
+                                </button>
+                              </fieldset>
+                            </form>
+                          </div>
 
-    </div>
-  </div>"""))
+                        </div>
+                      </div>
+                      """))
 
   val article = div(`class` := "article-page", raw("""
-  <div class="banner">
-    <div class="container">
+                      <div class="banner">
+                        <div class="container">
 
-      <h1>How to build webapps that scale</h1>
+                          <h1>How to build webapps that scale</h1>
 
-      <div class="article-meta">
-        <a href=""><img src="http://i.imgur.com/Qr71crq.jpg" /></a>
-        <div class="info">
-          <a href="" class="author">Eric Simons</a>
-          <span class="date">January 20th</span>
-        </div>
-        <button class="btn btn-sm btn-outline-secondary">
-          <i class="ion-plus-round"></i>
-          &nbsp;
-          Follow Eric Simons <span class="counter">(10)</span>
-        </button>
-        &nbsp;&nbsp;
-        <button class="btn btn-sm btn-outline-primary">
-          <i class="ion-heart"></i>
-          &nbsp;
-          Favorite Post <span class="counter">(29)</span>
-        </button>
-      </div>
+                          <div class="article-meta">
+                            <a href="">
+                              <img src="http://i.imgur.com/Qr71crq.jpg"/>
+                            </a>
+                            <div class="info">
+                              <a href="" class="author">Eric Simons</a>
+                              <span class="date">January 20th</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary">
+                              <i class="ion-plus-round"></i>
+                              &nbsp;
+                              Follow Eric Simons
+                              <span class="counter">(10)</span>
+                            </button>
+                            &nbsp; &nbsp;
+                            <button class="btn btn-sm btn-outline-primary">
+                              <i class="ion-heart"></i>
+                              &nbsp;
+                              Favorite Post
+                              <span class="counter">(29)</span>
+                            </button>
+                          </div>
 
-    </div>
-  </div>
+                        </div>
+                      </div>
 
-  <div class="container page">
+                      <div class="container page">
 
-    <div class="row article-content">
-      <div class="col-md-12">
-        <p>
-        Web development technologies have evolved at an incredible clip over the past few years.
-        </p>
-        <h2 id="introducing-ionic">Introducing RealWorld.</h2>
-        <p>It's a great solution for learning how other frameworks work.</p>
-      </div>
-    </div>
+                        <div class="row article-content">
+                          <div class="col-md-12">
+                            <p>
+                              Web development technologies have evolved at an incredible clip over the past few years.
+                            </p>
+                            <h2 id="introducing-ionic">Introducing RealWorld.</h2>
+                            <p>It's a great solution for learning how other frameworks work.</p>
+                          </div>
+                        </div>
 
-    <hr />
+                        <hr/>
 
-    <div class="article-actions">
-      <div class="article-meta">
-        <a href="profile.html"><img src="http://i.imgur.com/Qr71crq.jpg" /></a>
-        <div class="info">
-          <a href="" class="author">Eric Simons</a>
-          <span class="date">January 20th</span>
-        </div>
+                        <div class="article-actions">
+                          <div class="article-meta">
+                            <a href="profile.html">
+                              <img src="http://i.imgur.com/Qr71crq.jpg"/>
+                            </a>
+                            <div class="info">
+                              <a href="" class="author">Eric Simons</a>
+                              <span class="date">January 20th</span>
+                            </div>
 
-        <button class="btn btn-sm btn-outline-secondary">
-          <i class="ion-plus-round"></i>
-          &nbsp;
-          Follow Eric Simons <span class="counter">(10)</span>
-        </button>
-        &nbsp;
-        <button class="btn btn-sm btn-outline-primary">
-          <i class="ion-heart"></i>
-          &nbsp;
-          Favorite Post <span class="counter">(29)</span>
-        </button>
-      </div>
-    </div>
+                            <button class="btn btn-sm btn-outline-secondary">
+                              <i class="ion-plus-round"></i>
+                              &nbsp;
+                              Follow Eric Simons
+                              <span class="counter">(10)</span>
+                            </button>
+                            &nbsp;
+                            <button class="btn btn-sm btn-outline-primary">
+                              <i class="ion-heart"></i>
+                              &nbsp;
+                              Favorite Post
+                              <span class="counter">(29)</span>
+                            </button>
+                          </div>
+                        </div>
 
-    <div class="row">
+                        <div class="row">
 
-      <div class="col-xs-12 col-md-8 offset-md-2">
+                          <div class="col-xs-12 col-md-8 offset-md-2">
 
-        <form class="card comment-form">
-          <div class="card-block">
-            <textarea class="form-control" placeholder="Write a comment..." rows="3"></textarea>
-          </div>
-          <div class="card-footer">
-            <img src="http://i.imgur.com/Qr71crq.jpg" class="comment-author-img" />
-            <button class="btn btn-sm btn-primary">
-             Post Comment
-            </button>
-          </div>
-        </form>
+                            <form class="card comment-form">
+                              <div class="card-block">
+                                <textarea class="form-control" placeholder="Write a comment..." rows="3"></textarea>
+                              </div>
+                              <div class="card-footer">
+                                <img src="http://i.imgur.com/Qr71crq.jpg" class="comment-author-img"/>
+                                <button class="btn btn-sm btn-primary">
+                                  Post Comment
+                                </button>
+                              </div>
+                            </form>
 
-        <div class="card">
-          <div class="card-block">
-            <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
-          </div>
-          <div class="card-footer">
-            <a href="" class="comment-author">
-              <img src="http://i.imgur.com/Qr71crq.jpg" class="comment-author-img" />
-            </a>
-            &nbsp;
-            <a href="" class="comment-author">Jacob Schmidt</a>
-            <span class="date-posted">Dec 29th</span>
-          </div>
-        </div>
+                            <div class="card">
+                              <div class="card-block">
+                                <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
+                              </div>
+                              <div class="card-footer">
+                                <a href="" class="comment-author">
+                                  <img src="http://i.imgur.com/Qr71crq.jpg" class="comment-author-img"/>
+                                </a>
+                                &nbsp;
+                                <a href="" class="comment-author">Jacob Schmidt</a>
+                                <span class="date-posted">Dec 29th</span>
+                              </div>
+                            </div>
 
-        <div class="card">
-          <div class="card-block">
-            <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
-          </div>
-          <div class="card-footer">
-            <a href="" class="comment-author">
-              <img src="http://i.imgur.com/Qr71crq.jpg" class="comment-author-img" />
-            </a>
-            &nbsp;
-            <a href="" class="comment-author">Jacob Schmidt</a>
-            <span class="date-posted">Dec 29th</span>
-            <span class="mod-options">
-              <i class="ion-edit"></i>
-              <i class="ion-trash-a"></i>
-            </span>
-          </div>
-        </div>
+                            <div class="card">
+                              <div class="card-block">
+                                <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
+                              </div>
+                              <div class="card-footer">
+                                <a href="" class="comment-author">
+                                  <img src="http://i.imgur.com/Qr71crq.jpg" class="comment-author-img"/>
+                                </a>
+                                &nbsp;
+                                <a href="" class="comment-author">Jacob Schmidt</a>
+                                <span class="date-posted">Dec 29th</span>
+                                <span class="mod-options">
+                                  <i class="ion-edit"></i>
+                                  <i class="ion-trash-a"></i>
+                                </span>
+                              </div>
+                            </div>
 
-      </div>
+                          </div>
 
-    </div>
+                        </div>
 
-  </div>"""))
+                      </div>
+                      """))
 }

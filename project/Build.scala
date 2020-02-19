@@ -101,7 +101,7 @@ object Dependencies {
   val scalactic    = ld += "org.scalactic" %% "scalactic" % "3.0.7"
   val scribe       = ld += "com.outr" %%% "scribe" % "2.7.10"
   val sourcecode   = ld += "com.lihaoyi" %%% "sourcecode" % "0.1.7"
-  val upickle      = ld += "com.lihaoyi" %% "upickle" % "0.8.0"
+  val upickle      = ld += "com.lihaoyi" %%% "upickle" % "0.8.0"
   val toml         = ld += "tech.sparse" %%% "toml-scala" % "0.2.2"
 
   val akkaHttp = ld ++= (Seq("akka-http-core",
