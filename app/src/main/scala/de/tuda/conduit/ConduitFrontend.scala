@@ -17,6 +17,7 @@ import scalatags.jsdom.Frag
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
 import org.scalajs.dom.experimental.Fetch
+import rescala.reactives.RExceptions.EmptySignalControlThrowable
 import upickle.default.ReadWriter
 
 import scala.concurrent.Future
@@ -86,16 +87,22 @@ object ConduitFrontend {
 
     val mainArticles = Signals.fromFuture(API.articles())
 
+    val slug = Navigation.currentAppState.map{
+      case Reader(slug) => slug
+      case _ => throw EmptySignalControlThrowable
+    }
+    val currentArticle = Templates.articleFromSlug(slug, mainArticles)
+
 
     dom.document.body = body(Templates.navTag(Navigation.currentAppState),
-                             Navigation.currentAppState.map {
+                             Signal { Navigation.currentAppState.value match {
                                case Index            => Templates.articleList(mainArticles)
                                case Settings         => Templates.settings
                                case Login | Register => Templates.login
                                case Compose          => Templates.createEdit
-                               case Author(username) => Templates.login
-                               case Reader(slug) => Templates.login
-                             }.asModifier,
+                               case Author(username) => Templates.profile
+                               case Reader(slug)     => currentArticle.value
+                             }}.asModifier,
                              Templates.footerTag).render
 
     println("fetching arrticles")
@@ -124,12 +131,14 @@ object Navigation {
     val paths = List(path.substring(1).split("/"): _*)
     scribe.debug(s"get state for $paths")
     paths match {
-      case Nil | "" :: Nil   => Index
-      case "settings" :: Nil => Settings
-      case "login" :: Nil    => Login
-      case "register" :: Nil => Register
-      case "compose" :: Nil  => Compose
-      case _                 => Index
+      case Nil | "" :: Nil              => Index
+      case "settings" :: Nil            => Settings
+      case "login" :: Nil               => Login
+      case "register" :: Nil            => Register
+      case "compose" :: Nil             => Compose
+      case "reader" :: slug :: Nil      => Reader(slug)
+      case "profile" :: username :: Nil => Author(username)
+      case _                            => Index
     }
   }
 

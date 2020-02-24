@@ -1,11 +1,14 @@
 package de.tuda.conduit
 
-import de.tuda.conduit.API.Article
+import de.tuda.conduit.API.{Article, Author}
 import de.tuda.conduit.Navigation.AppState
+import org.scalajs.dom.Element
 import scalatags.JsDom.all._
 import scalatags.JsDom.tags2._
 import rescala.default._
 import rescala.extra.Tags._
+import rescala.reactives.RExceptions.EmptySignalControlThrowable
+import scalatags.JsDom.TypedTag
 
 object Templates {
 
@@ -78,17 +81,9 @@ object Templates {
 
     def articlePreviewTag(article: Article) =
       div(`class` := "article-preview",
-          div(`class` := "article-meta",
-              a(href := article.author.url,
-                img(src := article.author.image)),
-              div(`class` := "info",
-                  a(href := article.author.url, `class` := "author", article.author.username),
-                  span(`class` := "date", article.createdAt)),
-              button(`class` := "btn btn-outline-primary btn-sm pull-xs-right",
-                     i(`class` := "ion-heart"), article.favoritesCount)
-              ),
-          a(href := article.url, `class` := "preview-link"),
-          h1(article.title), p(article.description), span("Read more ..."))
+          authorMeta(article)(favButton(article)),
+          a(href := article.url, `class` := "preview-link",
+            h1(article.title), p(article.description), span("Read more ...")))
 
     div(`class` := "home-page",
         headerBannerTag,
@@ -100,6 +95,36 @@ object Templates {
                 tagsTag)))
   }
 
+  def favButton(article: Article): Tag = {
+    button(`class` := "btn btn-outline-primary btn-sm pull-xs-right",
+           i(`class` := "ion-heart"), article.favoritesCount)
+  }
+
+  def followButton(author: Author): Tag = {
+    button(`class` := "btn btn-sm btn-outline-secondary",
+           i(`class` := "ion-plus-round"),
+           raw("&nbsp Follow"),
+           author.username)
+  }
+
+  def favoriteButton(article: Article): Tag = {
+    button(`class` := "btn btn-sm btn-outline-primary",
+           i(`class` := "ion-heart"),
+           raw("&nbsp; Favorite Post"),
+           span(`class` := "counter", article.favoritesCount)
+           )
+  }
+
+
+  def authorMeta(article: Article): Tag = {
+    div(`class` := "article-meta",
+        a(href := article.author.url,
+          img(src := article.author.image)),
+        div(`class` := "info",
+            a(href := article.author.url, `class` := "author", article.author.username),
+            span(`class` := "date", article.createdAt))
+        )
+  }
 
   val login = div(`class` := "auth-page", raw("""
   <div class="container page">
@@ -291,38 +316,18 @@ object Templates {
                       </div>
                       """))
 
-  val article = div(`class` := "article-page", raw("""
-                      <div class="banner">
-                        <div class="container">
+  def articleFromSlug(slug: Signal[String], articles: Signal[List[Article]]): Signal[TypedTag[Element]] = {
+    Signal[TypedTag[Element]] { articles.value.find(_.slug == slug.value).map(articleTag).getOrElse(throw EmptySignalControlThrowable) }
+  }
 
-                          <h1>How to build webapps that scale</h1>
+  def articleTag(article: Article): TypedTag[Element] = {
 
-                          <div class="article-meta">
-                            <a href="">
-                              <img src="http://i.imgur.com/Qr71crq.jpg"/>
-                            </a>
-                            <div class="info">
-                              <a href="" class="author">Eric Simons</a>
-                              <span class="date">January 20th</span>
-                            </div>
-                            <button class="btn btn-sm btn-outline-secondary">
-                              <i class="ion-plus-round"></i>
-                              &nbsp;
-                              Follow Eric Simons
-                              <span class="counter">(10)</span>
-                            </button>
-                            &nbsp; &nbsp;
-                            <button class="btn btn-sm btn-outline-primary">
-                              <i class="ion-heart"></i>
-                              &nbsp;
-                              Favorite Post
-                              <span class="counter">(29)</span>
-                            </button>
-                          </div>
+    val banner = div(`class` := "banner",
+                     div(`class` := "container",
+                         h1(article.title),
+                         authorMeta(article)(followButton(article.author), raw("&nbsp;&nbsp;"), favoriteButton(article))))
 
-                        </div>
-                      </div>
-
+    div(`class` := "article-page", banner, raw("""
                       <div class="container page">
 
                         <div class="row article-content">
@@ -417,4 +422,5 @@ object Templates {
 
                       </div>
                       """))
+  }
 }
