@@ -64,16 +64,28 @@ object API {
 
   case class ArticleList(articles: List[Article], articlesCount: Int)
 
+  case class Comment(id: Int, createdAt: String, updatedAt: String, body: String, author: Author)
+  case class CommentList(comments: List[Comment])
+
+
   implicit val AuthorRW     : ReadWriter[Author]      = upickle.default.macroRW
   implicit val ArticleRW    : ReadWriter[Article]     = upickle.default.macroRW
   implicit val ArticleListRW: ReadWriter[ArticleList] = upickle.default.macroRW
+  implicit val CommentRW    : ReadWriter[Comment]     = upickle.default.macroRW
+  implicit val CommentListRW: ReadWriter[CommentList] = upickle.default.macroRW
 
   def articles(): Future[List[Article]] =
     Fetch.fetch(baseurl + "/articles").toFuture.flatMap(_.text().toFuture)
          .map { response =>
-           println(response)
            upickle.default.read[ArticleList](response).articles
          }
+
+  def comments(slug: String): Future[List[Comment]] = {
+    Fetch.fetch(baseurl + s"/articles/$slug/comments").toFuture.flatMap(_.text().toFuture)
+         .map { response =>
+           upickle.default.read[CommentList](response).comments
+         }
+  }
 
 }
 
@@ -87,22 +99,24 @@ object ConduitFrontend {
 
     val mainArticles = Signals.fromFuture(API.articles())
 
-    val slug = Navigation.currentAppState.map{
+    val slug           = Navigation.currentAppState.map {
       case Reader(slug) => slug
-      case _ => throw EmptySignalControlThrowable
+      case _            => throw EmptySignalControlThrowable
     }
     val currentArticle = Templates.articleFromSlug(slug, mainArticles)
 
 
     dom.document.body = body(Templates.navTag(Navigation.currentAppState),
-                             Signal { Navigation.currentAppState.value match {
-                               case Index            => Templates.articleList(mainArticles)
-                               case Settings         => Templates.settings
-                               case Login | Register => Templates.login
-                               case Compose          => Templates.createEdit
-                               case Author(username) => Templates.profile
-                               case Reader(slug)     => currentArticle.value
-                             }}.asModifier,
+                             Signal {
+                               Navigation.currentAppState.value match {
+                                 case Index            => Templates.articleList(mainArticles)
+                                 case Settings         => Templates.settings
+                                 case Login | Register => Templates.login
+                                 case Compose          => Templates.createEdit
+                                 case Author(username) => Templates.profile
+                                 case Reader(slug)     => currentArticle.value
+                               }
+                             }.asModifier,
                              Templates.footerTag).render
 
     println("fetching arrticles")
