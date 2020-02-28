@@ -1,5 +1,6 @@
 package de.tuda.conduit
 
+import de.tuda.conduit.API.{User, UserReg}
 import de.tuda.conduit.Navigation._
 import org.scalajs.dom
 import rescala.default._
@@ -11,17 +12,20 @@ import scalatags.JsDom.tags.body
 
 import scala.scalajs.js.URIUtils.decodeURIComponent
 import org.scalajs.dom.raw.HashChangeEvent
-import org.scalajs.dom.experimental.URL
+import org.scalajs.dom.experimental.{AbortSignal, BodyInit, Fetch, HeadersInit, HttpMethod, ReferrerPolicy, RequestCache, RequestCredentials, RequestInit, RequestMode, RequestRedirect, URL}
+import rescala.core.{Pulse, Scheduler, Struct}
+import rescala.{default, reactives}
 import scalatags.jsdom.Frag
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
-import org.scalajs.dom.experimental.Fetch
 import rescala.reactives.RExceptions.EmptySignalControlThrowable
 import upickle.default.ReadWriter
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js.{UndefOr, |}
+import scala.util.{Failure, Random}
 
 
 //@JSImport("localforage", JSImport.Namespace)
@@ -67,12 +71,21 @@ object API {
   case class Comment(id: Int, createdAt: String, updatedAt: String, body: String, author: Author)
   case class CommentList(comments: List[Comment])
 
+  case class UserReg(username: String, password: String, email: String, bio: Option[String] = None, image: Option[String] = None)
+  case class User(id: Int, token: String, username: String, password: String, email: String, bio: Option[String] = None, image: Option[String] = None)
+  case class UserRegWrapper(user: UserReg)
+  case class UserWrapper(user: User)
 
-  implicit val AuthorRW     : ReadWriter[Author]      = upickle.default.macroRW
-  implicit val ArticleRW    : ReadWriter[Article]     = upickle.default.macroRW
-  implicit val ArticleListRW: ReadWriter[ArticleList] = upickle.default.macroRW
-  implicit val CommentRW    : ReadWriter[Comment]     = upickle.default.macroRW
-  implicit val CommentListRW: ReadWriter[CommentList] = upickle.default.macroRW
+
+  implicit val AuthorRW        : ReadWriter[Author]         = upickle.default.macroRW
+  implicit val ArticleRW       : ReadWriter[Article]        = upickle.default.macroRW
+  implicit val ArticleListRW   : ReadWriter[ArticleList]    = upickle.default.macroRW
+  implicit val CommentRW       : ReadWriter[Comment]        = upickle.default.macroRW
+  implicit val CommentListRW   : ReadWriter[CommentList]    = upickle.default.macroRW
+  implicit val UserRW          : ReadWriter[User]           = upickle.default.macroRW
+  implicit val UserRegRW       : ReadWriter[UserReg]        = upickle.default.macroRW
+  implicit val UserRegWrapperRW: ReadWriter[UserRegWrapper] = upickle.default.macroRW
+  implicit val UserWrapperRW   : ReadWriter[UserWrapper]    = upickle.default.macroRW
 
   def articles(): Future[List[Article]] =
     Fetch.fetch(baseurl + "/articles").toFuture.flatMap(_.text().toFuture)
@@ -87,6 +100,60 @@ object API {
          }
   }
 
+  def registerFun(user: UserReg): Future[User] = {
+    val serializedUser = upickle.default.write(UserRegWrapper(user))
+    println(serializedUser)
+    Fetch.fetch(baseurl + "/users",
+                js.Dynamic.literal(
+                  method = HttpMethod.POST,
+                  body = serializedUser,
+                  headers = js.Dictionary("Content-Type" -> "application/json;charset=utf-8")
+                  ).asInstanceOf[RequestInit]).toFuture.flatMap(_.text().toFuture)
+         .map { response =>
+           upickle.default.read[UserWrapper](response).user
+         }
+
+  }
+
+  def loginFun(user: UserReg): Future[User] = {
+    val serializedUser = upickle.default.write(UserRegWrapper(user))
+    Fetch.fetch(baseurl + "/users/login",
+                js.Dynamic.literal(
+                  method = HttpMethod.POST,
+                  body = serializedUser,
+                  headers = js.Dictionary("Content-Type" -> "application/json;charset=utf-8")
+                  ).asInstanceOf[RequestInit]).toFuture.flatMap(_.text().toFuture)
+         .map { response =>
+           upickle.default.read[UserWrapper](response).user
+         }
+
+  }
+
+  val login: PullEvent[UserReg, User, default.Structure] = PullEvent.from(loginFun)
+  val register: PullEvent[UserReg, User, default.Structure] = PullEvent.from(registerFun)
+  val currentUser: Signal[Option[User]] = (login.event || register.event).latestOption()
+
+}
+
+trait PullEvent[A, T, S <: Struct] {
+  def apply(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T]
+  def event: rescala.reactives.Event[T, S]
+}
+
+object PullEvent {
+  def from[A, T, S <: Struct](callback: A => Future[T])(implicit creationTicket: rescala.core.CreationTicket[S]): PullEvent[A, T, S] = {
+    val evt = rescala.reactives.Evt[T, S]()(creationTicket)
+    new PullEvent[A, T, S] {
+      override def apply(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T] = {
+        callback(value).andThen { case res =>
+          scheduler.forceNewTransaction(evt) { at =>
+            evt.admitPulse(Pulse.fromTry(res))(at)
+          }
+        }
+      }
+      override def event: reactives.Event[T, S] = evt
+    }
+  }
 }
 
 
@@ -96,6 +163,12 @@ object ConduitFrontend {
   val replicaID: Id = IdUtil.genId()
 
   def main(args: Array[String]): Unit = {
+
+    //val randid = Random.nextInt().toString
+    //
+    //val user = UserReg(username = "res" + randid, email = s"restest$randid@example.com", password = "1234567890")
+    //
+    //API.register(user).onComplete(println)
 
     val mainArticles = Signals.fromFuture(API.articles())
 
@@ -111,7 +184,7 @@ object ConduitFrontend {
                                Navigation.currentAppState.value match {
                                  case Index            => Templates.articleList(mainArticles)
                                  case Settings         => Templates.settings
-                                 case Login | Register => Templates.login
+                                 case Login | Register => Templates.signup
                                  case Compose          => Templates.createEdit
                                  case Author(username) => Templates.profile
                                  case Reader(slug)     => currentArticle.value
@@ -119,7 +192,7 @@ object ConduitFrontend {
                              }.asModifier,
                              Templates.footerTag).render
 
-    println("fetching arrticles")
+    println("fetching articles")
 
     //val bodyParent = dom.document.body.parentElement
     //bodyParent.removeChild(dom.document.body)

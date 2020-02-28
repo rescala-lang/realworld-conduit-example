@@ -103,14 +103,14 @@ object Templates {
   def followButton(author: Author): Tag = {
     button(`class` := "btn btn-sm btn-outline-secondary",
            i(`class` := "ion-plus-round"),
-           raw("&nbsp Follow"),
+           raw("&nbspFollow"),
            author.username)
   }
 
   def favoriteButton(article: Article): Tag = {
     button(`class` := "btn btn-sm btn-outline-primary",
            i(`class` := "ion-heart"),
-           raw("&nbsp; Favorite Post"),
+           raw("&nbsp;Favorite Post "),
            span(`class` := "counter", article.favoritesCount)
            )
   }
@@ -126,39 +126,26 @@ object Templates {
         )
   }
 
-  val login = div(`class` := "auth-page", raw("""
-  <div class="container page">
-    <div class="row">
-
-      <div class="col-md-6 offset-md-3 col-xs-12">
-        <h1 class="text-xs-center">Sign up</h1>
-        <p class="text-xs-center">
-          <a href="">Have an account?</a>
-        </p>
-
-        <ul class="error-messages">
-          <li>That email is already taken</li>
-        </ul>
-
-        <form>
-          <fieldset class="form-group">
-            <input class="form-control form-control-lg" type="text" placeholder="Your Name">
-            </fieldset>
-            <fieldset class="form-group">
-              <input class="form-control form-control-lg" type="text" placeholder="Email">
-              </fieldset>
-              <fieldset class="form-group">
-                <input class="form-control form-control-lg" type="password" placeholder="Password">
-                </fieldset>
-                <button class="btn btn-lg btn-primary pull-xs-right">
-                  Sign up
-                </button>
-              </form>
-            </div>
-
-          </div>
-        </div>
-        """))
+  val signup = div(`class` := "auth-page",
+                   div(`class` := "container page",
+                       div(`class` := "row",
+                           div(`class` := "col-md-6 offset-md-3 col-xs-12",
+                               h1(`class` := "text-xs-center", "Sign up"),
+                               p(`class` := "text-xs-center", a(href := "", "Have an account?")),
+                               ul(`class` := "error-messages", li("That email is already taken")),
+                               fieldset(`class` := "form-group",
+                                        input(`class` := "form-control form-control-lg",
+                                              `type` := "text",
+                                              placeholder := "Your Name")),
+                               fieldset(`class` := "form-group",
+                                        input(`class` := "form-control form-control-lg",
+                                              `type` := "text",
+                                              placeholder := "Email")),
+                               fieldset(`class` := "form-group",
+                                        input(`class` := "form-control form-control-lg",
+                                              `type` := "password",
+                                              placeholder := "Password")),
+                               button(`class` := "btn btn-lg btn-primary pull-xs-right", "Sign up")))))
 
   val profile = div(`class` := "profile-page", raw("""
         <div class="user-info">
@@ -340,17 +327,17 @@ object Templates {
                                    button(`class` := "btn btn-sm btn-primary", "Post Comment")))
 
     def comment(comment: Comment) = div(`class` := "card",
-                              div(`class` := "card-block",
-                                p(`class` := "card-text">"With supporting text below as a natural lead-in to additional content.")),
-                              div(`class` := "card-footer",
-                                a(href:="", `class` := "comment-author",
-                                  img(src:="http://i.imgur.com/Qr71crq.jpg", `class` := "comment-author-img")),
-                                raw("&nbsp;"),
-                                a(href:="", `class` := "comment-author", comment.author.username),
-                                span(`class` := "date-posted", comment.createdAt),
-                                span(`class` := "mod-options",
-                                  i(`class` := "ion-edit"),
-                                  i(`class` := "ion-trash-a"))))
+                                        div(`class` := "card-block",
+                                            p(`class` := "card-text" > "With supporting text below as a natural lead-in to additional content.")),
+                                        div(`class` := "card-footer",
+                                            a(href := "", `class` := "comment-author",
+                                              img(src := "http://i.imgur.com/Qr71crq.jpg", `class` := "comment-author-img")),
+                                            raw("&nbsp;"),
+                                            a(href := "", `class` := "comment-author", comment.author.username),
+                                            span(`class` := "date-posted", comment.createdAt),
+                                            span(`class` := "mod-options",
+                                                 i(`class` := "ion-edit"),
+                                                 i(`class` := "ion-trash-a"))))
 
     div(`class` := "article-page", banner,
         div(`class` := "container page", content, hr, authorTags,
