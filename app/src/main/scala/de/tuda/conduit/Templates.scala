@@ -25,7 +25,7 @@ object Templates {
           Navigation.Index -> stringFrag("""Home"""),
           Navigation.Compose -> i(`class` := "ion-compose", raw("&nbsp;New article")),
           Navigation.Settings -> i(`class` := "ion-gear-a", raw("&nbsp;Settings")),
-          Navigation.Author(user.username) -> stringFrag(user.username)
+          Navigation.Profile(user.username) -> stringFrag(user.username)
           )
       }
 
@@ -54,16 +54,8 @@ object Templates {
         </span>
       </div>"""))
 
-  def articleList(articles: Signal[List[Article]]) = {
-    val headerBannerTag = raw("""
-  <div class="banner">
-    <div class="container">
-      <h1 class="logo-font">conduit</h1>
-      <p>A place to share your knowledge.</p>
-    </div>
-  </div>""")
 
-    def tagsTag = raw("""
+  def tagsTag = raw("""
         <div class="col-md-3">
           <div class="sidebar">
             <p>Popular Tags</p>
@@ -81,7 +73,7 @@ object Templates {
           </div>
         </div>""")
 
-    def feedToggle = raw("""
+  def feedToggle = raw("""
           <div class="feed-toggle">
             <ul class="nav nav-pills outline-active">
               <li class="nav-item">
@@ -93,18 +85,27 @@ object Templates {
             </ul>
           </div>""")
 
-    def articlePreviewTag(article: Article) =
-      div(`class` := "article-preview",
-          authorMeta(article)(favButton(article)),
-          a(href := article.url, `class` := "preview-link",
-            h1(article.title), p(article.description), span("Read more ...")))
+  val headerBannerTag = raw("""
+  <div class="banner">
+    <div class="container">
+      <h1 class="logo-font">conduit</h1>
+      <p>A place to share your knowledge.</p>
+    </div>
+  </div>""")
 
+  def articlePreviewTag(article: Article) =
+    div(`class` := "article-preview",
+        authorMeta(article)(favButton(article)),
+        a(href := article.url, `class` := "preview-link",
+          h1(article.title), p(article.description), span("Read more ...")))
+
+
+  def articleList(articles: Signal[List[Article]]) = {
     div(`class` := "home-page",
         headerBannerTag,
         div(`class` := "container page",
             div(`class` := "row",
-                div(`class` := "col-md-9",
-                    feedToggle)(
+                div(`class` := "col-md-9", feedToggle)(
                   articles.map(_.map(articlePreviewTag)).asModifierL),
                 tagsTag)))
   }
@@ -115,7 +116,7 @@ object Templates {
   }
 
   def followButton(author: Author): Tag = {
-    button(`class` := "btn btn-sm btn-outline-secondary",
+    button(`class` := "btn btn-sm action-btn btn-outline-secondary",
            i(`class` := "ion-plus-round"),
            raw("&nbspFollow"),
            author.username)
@@ -202,95 +203,31 @@ object Templates {
         ))
   }
 
-  val profile = div(`class` := "profile-page", raw("""
-        <div class="user-info">
-          <div class="container">
-            <div class="row">
+  def profile(author: Signal[Author]) =
+    div(`class` := "profile-page",
+        div(`class` := "user-info",
+            div(`class` := "container",
+                author.map { auth =>
+                  div(`class` := "row",
+                      div(`class` := "col-xs-12 col-md-10 offset-md-1",
+                          img(src := auth.image, `class` := "user-img"),
+                          h4(auth.username),
+                          p(stringFrag(auth.biography.getOrElse("This coud be your description"))),
+                          followButton(auth)))
+                }.asModifier)),
+        div(`class` := "container",
+            div(`class` := "row",
 
-              <div class="col-xs-12 col-md-10 offset-md-1">
-                <img src="http://i.imgur.com/Qr71crq.jpg" class="user-img"/>
-                <h4>Eric Simons</h4>
-                <p>
-                  Cofounder @GoThinkster, lived in Aol's HQ for a few months, kinda looks like Peeta from the Hunger Games
-                </p>
-                <button class="btn btn-sm btn-outline-secondary action-btn">
-                  <i class="ion-plus-round"></i>
-                  &nbsp;
-                  Follow Eric Simons
-                </button>
-              </div>
+                div(`class` := "col-xs-12 col-md-10 offset-md-1",
+                    div(`class` := "articles-toggle",
+                        ul(`class` := "nav nav-pills outline-active",
+                           li(`class` := "nav-item",
+                              a(`class` := "nav-link active", href := "", "My Articles")),
+                           li(`class` := "nav-item",
+                              a(`class` := "nav-link", href := "", "Favorited Articles")))),
+                    List.empty[Article].map(articlePreviewTag)
+                    ))))
 
-            </div>
-          </div>
-        </div>
-
-        <div class="container">
-          <div class="row">
-
-            <div class="col-xs-12 col-md-10 offset-md-1">
-              <div class="articles-toggle">
-                <ul class="nav nav-pills outline-active">
-                  <li class="nav-item">
-                    <a class="nav-link active" href="">My Articles</a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" href="">Favorited Articles</a>
-                  </li>
-                </ul>
-              </div>
-
-              <div class="article-preview">
-                <div class="article-meta">
-                  <a href="">
-                    <img src="http://i.imgur.com/Qr71crq.jpg"/>
-                  </a>
-                  <div class="info">
-                    <a href="" class="author">Eric Simons</a>
-                    <span class="date">January 20th</span>
-                  </div>
-                  <button class="btn btn-outline-primary btn-sm pull-xs-right">
-                    <i class="ion-heart"></i>
-                    29
-                  </button>
-                </div>
-                <a href="" class="preview-link">
-                  <h1>How to build webapps that scale</h1>
-                  <p>This is the description for the post.</p>
-                  <span>Read more...</span>
-                </a>
-              </div>
-
-              <div class="article-preview">
-                <div class="article-meta">
-                  <a href="">
-                    <img src="http://i.imgur.com/N4VcUeJ.jpg"/>
-                  </a>
-                  <div class="info">
-                    <a href="" class="author">Albert Pai</a>
-                    <span class="date">January 20th</span>
-                  </div>
-                  <button class="btn btn-outline-primary btn-sm pull-xs-right">
-                    <i class="ion-heart"></i>
-                    32
-                  </button>
-                </div>
-                <a href="" class="preview-link">
-                  <h1>The song you won't ever stop singing. No matter how hard you try.</h1>
-                  <p>This is the description for the post.</p>
-                  <span>Read more...</span>
-                  <ul class="tag-list">
-                    <li class="tag-default tag-pill tag-outline">Music</li>
-                    <li class="tag-default tag-pill tag-outline">Song</li>
-                  </ul>
-                </a>
-              </div>
-
-
-            </div>
-
-          </div>
-        </div>
-        """))
 
   val settings = div(`class` := "settings-page", raw("""
         <div class="container page">

@@ -36,12 +36,11 @@ object Server {
     for {
       path <- resources
     } {
-      val nogzPath =
-        app.get(s"/${noZip(path)}", ctx => {
-          if (path.endsWith(".js.gz")) ctx.contentType("application/javascript")
-          if (path.endsWith(".gz")) ctx.header("Content-Encoding", "gzip")
-          ctx.result(File(s"target/resources/static/$path").newInputStream.buffered)
-        })
+      app.get(s"/${noZip(path)}", ctx => {
+        if (path.endsWith(".js.gz")) ctx.contentType("application/javascript")
+        if (path.endsWith(".gz")) ctx.header("Content-Encoding", "gzip")
+        ctx.result(File(s"target/resources/static/$path").newInputStream.buffered)
+      })
     }
 
 

@@ -1,6 +1,6 @@
 package de.tuda.conduit
 
-import de.tuda.conduit.API.{User, UserReg}
+import de.tuda.conduit.API.{Author, User, UserReg}
 import de.tuda.conduit.Navigation._
 import org.scalajs.dom
 import rescala.default._
@@ -25,7 +25,7 @@ import upickle.default.ReadWriter
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.{UndefOr, |}
-import scala.util.{Failure, Random, Try}
+import scala.util.{Failure, Random, Success, Try}
 
 
 //@JSImport("localforage", JSImport.Namespace)
@@ -42,14 +42,15 @@ trait LocalForageInstance extends js.Object {
 }
 
 object API {
-  val baseurl = "https://conduit.productionready.io/api"
+  val baseurl = "https://conduit.productionready.io/api/"
 
 
   case class Author(username: String,
-                    bio: String,
-                    image: String,
-                    following: Boolean) {
-    def url: String = Navigation.Author(username).url
+                    @deprecated("could be null, use biography instead", "") bio: String,
+                    image: String = "",
+                    following: Boolean = false) {
+    def url: String = Navigation.Profile(username).url
+    def biography: Option[String] = Option(bio)
   }
 
   case class Article(slug: String,
@@ -75,6 +76,7 @@ object API {
   case class User(id: Int, token: String, username: String, email: String, bio: Option[String] = None, image: Option[String] = None)
   case class UserRegWrapper(user: UserReg)
   case class UserWrapper(user: User)
+  case class ProfileWrapper(profile: Author)
 
   case class ErrorMessages(errors: Map[String, List[String]])
 
@@ -89,29 +91,50 @@ object API {
   implicit val UserRegWrapperRW: ReadWriter[UserRegWrapper] = upickle.default.macroRW
   implicit val UserWrapperRW   : ReadWriter[UserWrapper]    = upickle.default.macroRW
   implicit val ErrorMessagesRW : ReadWriter[ErrorMessages]  = upickle.default.macroRW
+  implicit val ProfileWrapperRW: ReadWriter[ProfileWrapper] = upickle.default.macroRW
+
+  def fetchtext(endpoint: String, method: HttpMethod = HttpMethod.GET, body: Option[String] = None): Future[String] = {
+
+    val ri = js.Dynamic.literal(method = method).asInstanceOf[RequestInit]
+
+    body.foreach { content =>
+      ri.body = content
+      ri.headers = js.Dictionary("Content-Type" -> "application/json;charset=utf-8")
+    }
+
+    Fetch.fetch(baseurl + endpoint, ri).toFuture.flatMap(_.text().toFuture)
+    .andThen{case resp => println(resp)}
+  }
 
   def articles(): Future[List[Article]] =
-    Fetch.fetch(baseurl + "/articles").toFuture.flatMap(_.text().toFuture)
-         .map { response =>
-           upickle.default.read[ArticleList](response).articles
-         }
+    fetchtext("articles")
+    .map { response =>
+      upickle.default.read[ArticleList](response).articles
+    }
 
   def comments(slug: String): Future[List[Comment]] = {
-    Fetch.fetch(baseurl + s"/articles/$slug/comments").toFuture.flatMap(_.text().toFuture)
-         .map { response =>
-           upickle.default.read[CommentList](response).comments
-         }
+    fetchtext(s"articles/$slug/comments")
+    .map { response =>
+      upickle.default.read[CommentList](response).comments
+    }
+  }
+
+  def userprofile(username: String): Future[Author] = {
+    fetchtext(s"profiles/$username")
+    .map { response =>
+      try upickle.default.read[ProfileWrapper](response).profile
+      catch {
+        case error: Throwable =>
+          println(response)
+          throw error
+      }
+    }
   }
 
   def loginRegisterFun(user: UserReg, endpoint: String): Future[Either[ErrorMessages, User]] = {
     val serializedUser = upickle.default.write(UserRegWrapper(user))
     println(serializedUser)
-    Fetch.fetch(baseurl + endpoint,
-                js.Dynamic.literal(
-                  method = HttpMethod.POST,
-                  body = serializedUser,
-                  headers = js.Dictionary("Content-Type" -> "application/json;charset=utf-8")
-                  ).asInstanceOf[RequestInit]).toFuture.flatMap(_.text().toFuture)
+    fetchtext(endpoint, HttpMethod.POST, Some(serializedUser))
          .map { response =>
            try {Right(upickle.default.read[UserWrapper](response).user)}
            catch {
@@ -124,12 +147,12 @@ object API {
   }
 
   def registerFun(user: UserReg): Future[Either[ErrorMessages, User]] = {
-    loginRegisterFun(user, endpoint = "/users")
+    loginRegisterFun(user, endpoint = "users")
 
   }
 
   def loginFun(user: UserReg): Future[Either[ErrorMessages, User]] = {
-    loginRegisterFun(user, endpoint = "/users/login")
+    loginRegisterFun(user, endpoint = "users/login")
   }
 
   val login   : PullEvent[UserReg, Either[ErrorMessages, User], default.Structure] = PullEvent.from(loginFun)
@@ -204,22 +227,26 @@ object ConduitFrontend {
     }
     val currentArticle = Templates.articleFromSlug(slug, mainArticles)
 
+    val profileEvent = PullEvent.from(API.userprofile)
+
+    val profileTag = Templates.profile(profileEvent.event.latest[Author])
+
 
     dom.document.body = body(Templates.navTag(Navigation.currentAppState, API.currentUser),
                              Signal {
                                Navigation.currentAppState.value match {
-                                 case Index            => Templates.articleList(mainArticles)
-                                 case Settings         => Templates.settings
-                                 case Register         => Templates.authentication.register(API.errorMessages)
-                                 case Login            => Templates.authentication.login(API.errorMessages)
-                                 case Compose          => Templates.createEdit
-                                 case Author(username) => Templates.profile
-                                 case Reader(slug)     => currentArticle.value
+                                 case Index             => Templates.articleList(mainArticles)
+                                 case Settings          => Templates.settings
+                                 case Register          => Templates.authentication.register(API.errorMessages)
+                                 case Login             => Templates.authentication.login(API.errorMessages)
+                                 case Compose           => Templates.createEdit
+                                 case Profile(username) =>
+                                   profileEvent(username)
+                                   profileTag
+                                 case Reader(slug)      => currentArticle.value
                                }
                              }.asModifier,
                              Templates.footerTag).render
-
-    println("fetching articles")
 
     //val bodyParent = dom.document.body.parentElement
     //bodyParent.removeChild(dom.document.body)
@@ -243,7 +270,7 @@ object Navigation {
         case "register" :: Nil            => Register
         case "compose" :: Nil             => Compose
         case "reader" :: slug :: Nil      => Reader(slug)
-        case "profile" :: username :: Nil => Author(username)
+        case "profile" :: username :: Nil => Profile(username)
         case _                            => Index
       }
     }
@@ -253,7 +280,7 @@ object Navigation {
   case object Login extends AppState("login")
   case object Register extends AppState("register")
   case object Compose extends AppState("compose")
-  case class Author(username: String) extends AppState(s"profile/$username")
+  case class Profile(username: String) extends AppState(s"profile/$username")
   case class Reader(slug: String) extends AppState(s"reader/$slug")
 
 
