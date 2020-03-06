@@ -1,6 +1,6 @@
 package de.tuda.conduit
 
-import de.tuda.conduit.API.{Article, Author, Comment, ErrorMessages, User, UserReg}
+import de.tuda.conduit.API.{Article, ArticleDraft, Author, Comment, ErrorMessages, User, UserReg}
 import de.tuda.conduit.Navigation.{AppState, Category}
 import org.scalajs.dom.Element
 import scalatags.JsDom.all._
@@ -259,36 +259,33 @@ object Templates {
           </div>
           """))
 
-  val createEdit = div(`class` := "editor-page", raw("""
-          <div class="container page">
-            <div class="row">
+  object writeArticle {
 
-              <div class="col-md-10 offset-md-1 col-xs-12">
-                <form>
-                  <fieldset>
-                    <fieldset class="form-group">
-                      <input type="text" class="form-control form-control-lg" placeholder="Article Title">
-                      </fieldset>
-                      <fieldset class="form-group">
-                        <input type="text" class="form-control" placeholder="What's this article about?">
-                        </fieldset>
-                        <fieldset class="form-group">
-                          <textarea class="form-control" rows="8" placeholder="Write your article (in markdown)"></textarea>
-                        </fieldset>
-                        <fieldset class="form-group">
-                          <input type="text" class="form-control" placeholder="Enter tags">
-                            <div class="tag-list"></div>
-                          </fieldset>
-                          <button class="btn btn-lg pull-xs-right btn-primary" type="button">
-                            Publish Article
-                          </button>
-                        </fieldset>
-                      </form>
-                    </div>
+    val titleInp       = input(`type` := "text", `class` := "form-control form-control-lg", placeholder := "Article Title").render
+    val descriptionInp = input(`type` := "text", `class` := "form-control", placeholder := "What's this article about?").render
+    val bodyInp        = textarea(`class` := "form-control", rows := "8", placeholder := "Write your article (in markdown)").render
+    val tagsInp        = input(`type` := "text", `class` := "form-control", placeholder := "Enter tags").render
 
-                  </div>
-                </div>
-                """))
+    private val publishEvt = Evt[Any]()
+    val draftEvent = publishEvt.map { _ =>
+      ArticleDraft(title = titleInp.value,
+                   description = descriptionInp.value,
+                   body = bodyInp.value,
+                   tagList = tagsInp.value.split("[\\s;,]+").toList)
+    }
+
+    val editorTag =
+      div(`class` := "editor-page",
+          div(`class` := "container page",
+              div(`class` := "row",
+                  div(`class` := "col-md-10 offset-md-1 col-xs-12",
+                      form(onsubmit := publishEvt,
+                           fieldset(
+                             List(titleInp, descriptionInp, bodyInp, tagsInp).map { inp =>
+                               fieldset(`class` := "form-group", inp)
+                             }),
+                           button(`class` := "btn btn-lg pull-xs-right btn-primary", "Publish Article"))))))
+  }
 
   def articleFromSlug(slug: Signal[String], articles: Signal[List[Article]]): Signal[TypedTag[Element]] = {
     Signal[TypedTag[Element]] {

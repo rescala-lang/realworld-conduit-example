@@ -13,7 +13,7 @@ object API {
 
 
   case class Author(username: String,
-                    @deprecated("could be null, use biography instead", "") bio: String,
+                    bio: String,
                     image: String = "",
                     following: Boolean = false) {
     def url: String = Navigation.Profile(username).url
@@ -35,6 +35,7 @@ object API {
   }
 
   case class ArticleList(articles: List[Article], articlesCount: Int)
+  case class ArticleWrapper(article: Article, articlesCount: Int)
 
   case class Comment(id: Int, createdAt: String, updatedAt: String, body: String, author: Author)
   case class CommentList(comments: List[Comment])
@@ -48,27 +49,41 @@ object API {
   case class ErrorMessages(errors: Map[String, List[String]])
   case class CategoriesList(tags: List[String])
 
+  case class ArticleDraft(title: String, description: String, body: String, tagList: List[String])
+  case class ArticleDraftWrapper(article: ArticleDraft)
 
-  implicit val AuthorRW        : ReadWriter[Author]         = upickle.default.macroRW
-  implicit val ArticleRW       : ReadWriter[Article]        = upickle.default.macroRW
-  implicit val ArticleListRW   : ReadWriter[ArticleList]    = upickle.default.macroRW
-  implicit val CommentRW       : ReadWriter[Comment]        = upickle.default.macroRW
-  implicit val CommentListRW   : ReadWriter[CommentList]    = upickle.default.macroRW
-  implicit val UserRW          : ReadWriter[User]           = upickle.default.macroRW
-  implicit val UserRegRW       : ReadWriter[UserReg]        = upickle.default.macroRW
-  implicit val UserRegWrapperRW: ReadWriter[UserRegWrapper] = upickle.default.macroRW
-  implicit val UserWrapperRW   : ReadWriter[UserWrapper]    = upickle.default.macroRW
-  implicit val ErrorMessagesRW : ReadWriter[ErrorMessages]  = upickle.default.macroRW
-  implicit val ProfileWrapperRW: ReadWriter[ProfileWrapper] = upickle.default.macroRW
-  implicit val CategoriesListRW: ReadWriter[CategoriesList] = upickle.default.macroRW
 
-  def fetchtext(endpoint: String, method: HttpMethod = HttpMethod.GET, body: Option[String] = None): Future[String] = {
+  implicit val AuthorRW             : ReadWriter[Author]              = upickle.default.macroRW
+  implicit val ArticleRW            : ReadWriter[Article]             = upickle.default.macroRW
+  implicit val ArticleListRW        : ReadWriter[ArticleList]         = upickle.default.macroRW
+  implicit val CommentRW            : ReadWriter[Comment]             = upickle.default.macroRW
+  implicit val CommentListRW        : ReadWriter[CommentList]         = upickle.default.macroRW
+  implicit val UserRW               : ReadWriter[User]                = upickle.default.macroRW
+  implicit val UserRegRW            : ReadWriter[UserReg]             = upickle.default.macroRW
+  implicit val UserRegWrapperRW     : ReadWriter[UserRegWrapper]      = upickle.default.macroRW
+  implicit val UserWrapperRW        : ReadWriter[UserWrapper]         = upickle.default.macroRW
+  implicit val ErrorMessagesRW      : ReadWriter[ErrorMessages]       = upickle.default.macroRW
+  implicit val ProfileWrapperRW     : ReadWriter[ProfileWrapper]      = upickle.default.macroRW
+  implicit val CategoriesListRW     : ReadWriter[CategoriesList]      = upickle.default.macroRW
+  implicit val ArticleDraftRW       : ReadWriter[ArticleDraft]        = upickle.default.macroRW
+  implicit val ArticleDraftWrapperRW: ReadWriter[ArticleDraftWrapper] = upickle.default.macroRW
+  implicit val ArticleWrapperRW     : ReadWriter[ArticleWrapper]      = upickle.default.macroRW
+
+  def fetchtext(endpoint: String,
+                method: HttpMethod = HttpMethod.GET,
+                body: Option[String] = None,
+                authentication: Option[User] = None): Future[String] = {
 
     val ri = js.Dynamic.literal(method = method).asInstanceOf[RequestInit]
 
     body.foreach { content =>
       ri.body = content
       ri.headers = js.Dictionary("Content-Type" -> "application/json;charset=utf-8")
+    }
+
+    authentication.foreach{ user =>
+      if (js.isUndefined(ri.headers)) ri.headers = js.Dictionary.empty[String]
+      ri.headers.asInstanceOf[js.Dictionary[String]]("Authorization") = s"Token ${user.token}"
     }
 
     Fetch.fetch(baseurl + endpoint, ri).toFuture.flatMap(_.text().toFuture)
@@ -135,18 +150,35 @@ object API {
     }
 
   val loginRegisterErrors: Signal[Option[ErrorMessages]] = loginresult.map(_.swap.toOption).latest(None)
-  Templates.authentication.loginUser.observe(login.pull(_))
-  Templates.authentication.registerUser.observe(register.pull(_))
 
 
   def categoriesFun(): Future[List[String]] = {
     fetchtext("tags")
     .map { response =>
-      upickle.default.read[CategoriesList](response).tags
+      try upickle.default.read[CategoriesList](response).tags
+      catch {
+        case error: Throwable =>
+          println(response)
+          throw error
+      }
     }
   }
 
   val categoriesEvent: PullEvent[Unit, List[String], REStructure] = PullEvent.from(_ => categoriesFun())
-  val categories                                                  = categoriesEvent.event.latest()
 
+  val categories = categoriesEvent.event.latest()
+
+  def postArticle(article: ArticleDraft, user: User) = {
+    val body = write(ArticleDraftWrapper(article))
+    fetchtext("articles", HttpMethod.POST, Some(body), Some(user))
+    .map { response =>
+      try read[ArticleList](response)
+      catch {
+        case error: Throwable =>
+          println(response)
+          throw error
+      }
+    }
+  }
 }
+

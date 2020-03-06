@@ -1,6 +1,6 @@
 package de.tuda.conduit
 
-import de.tuda.conduit.API.Author
+import de.tuda.conduit.API.{ArticleDraft, Author}
 import de.tuda.conduit.Navigation._
 import org.scalajs.dom
 import org.scalajs.dom.experimental.URL
@@ -34,7 +34,6 @@ trait LocalForageInstance extends js.Object {
   def setItem(key: String, value: js.Any): js.Promise[Unit] = js.native
   def getItem[T](key: String): js.Promise[T] = js.native
 }
-
 
 
 object StorageManager {
@@ -84,6 +83,16 @@ object ConduitFrontend {
     //
     //API.register(user).onComplete(println)
 
+    Templates.authentication.loginUser.observe(API.login.pull(_))
+    Templates.authentication.registerUser.observe(API.register.pull(_))
+    Templates.writeArticle.draftEvent
+             .collect { Function.unlift(draft => API.currentUser.value.map(draft -> _)) }
+             .observe { case (draft, user) =>
+               API.postArticle(draft, user).onComplete {
+                 res => println(res)
+               }
+             }
+
     val mainArticles = Signals.fromFuture(API.articles())
 
     val slug           = Navigation.currentAppState.map {
@@ -118,7 +127,7 @@ object ConduitFrontend {
                                  case Settings          => Templates.settings
                                  case Register          => Templates.authentication.register(API.loginRegisterErrors)
                                  case Login             => Templates.authentication.login(API.loginRegisterErrors)
-                                 case Compose           => Templates.createEdit
+                                 case Compose           => Templates.writeArticle.editorTag
                                  case Profile(username) =>
                                    profileEvent.pull(username)
                                    profileTag
