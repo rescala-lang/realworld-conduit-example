@@ -1,7 +1,7 @@
 package de.tuda.conduit
 
 import de.tuda.conduit.API.{Article, Author, Comment, ErrorMessages, User, UserReg}
-import de.tuda.conduit.Navigation.AppState
+import de.tuda.conduit.Navigation.{AppState, Category}
 import org.scalajs.dom.Element
 import scalatags.JsDom.all._
 import scalatags.JsDom.tags2.{SeqFrag => _, _}
@@ -55,35 +55,30 @@ object Templates {
       </div>"""))
 
 
-  def tagsTag = raw("""
-        <div class="col-md-3">
-          <div class="sidebar">
-            <p>Popular Tags</p>
-
-            <div class="tag-list">
-              <a href="" class="tag-pill tag-default">programming</a>
-              <a href="" class="tag-pill tag-default">javascript</a>
-              <a href="" class="tag-pill tag-default">emberjs</a>
-              <a href="" class="tag-pill tag-default">angularjs</a>
-              <a href="" class="tag-pill tag-default">react</a>
-              <a href="" class="tag-pill tag-default">mean</a>
-              <a href="" class="tag-pill tag-default">node</a>
-              <a href="" class="tag-pill tag-default">rails</a>
-            </div>
-          </div>
-        </div>""")
+  def categoriesList(cats: Signal[List[String]]) =
+    div(`class` := "col-md-3",
+        div(`class` := "sidebar",
+            p("Popular Tags"),
+            div(`class` := "tag-list",
+                cats.map { cats =>
+                  cats.map { cat =>
+                    a(href := Category(cat).url, `class` := "tag-pill tag-default", cat)
+                  }
+                }.asModifierL
+                )))
 
   def feedToggle = raw("""
-          <div class="feed-toggle">
-            <ul class="nav nav-pills outline-active">
-              <li class="nav-item">
-                <a class="nav-link disabled" href="">Your Feed</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link active" href="">Global Feed</a>
-              </li>
-            </ul>
-          </div>""")
+  <div class="feed-toggle">
+    <ul class="nav nav-pills outline-active">
+      <li class="nav-item">
+        <a class="nav-link disabled" href="">Your Feed</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link active" href="">Global Feed</a>
+      </li>
+    </ul>
+  </div>
+  """)
 
   val headerBannerTag = raw("""
   <div class="banner">
@@ -91,7 +86,8 @@ object Templates {
       <h1 class="logo-font">conduit</h1>
       <p>A place to share your knowledge.</p>
     </div>
-  </div>""")
+  </div>
+  """)
 
   def articlePreviewTag(article: Article) =
     div(`class` := "article-preview",
@@ -100,14 +96,14 @@ object Templates {
           h1(article.title), p(article.description), span("Read more ...")))
 
 
-  def articleList(articles: Signal[List[Article]]) = {
+  def articleList(articles: Signal[List[Article]], categories: Modifier) = {
     div(`class` := "home-page",
         headerBannerTag,
         div(`class` := "container page",
             div(`class` := "row",
                 div(`class` := "col-md-9", feedToggle)(
                   articles.map(_.map(articlePreviewTag)).asModifierL),
-                tagsTag)))
+                categories)))
   }
 
   def favButton(article: Article): Tag = {
@@ -230,31 +226,62 @@ object Templates {
 
 
   val settings = div(`class` := "settings-page", raw("""
-        <div class="container page">
-          <div class="row">
+  <div class="container page">
+    <div class="row">
 
-            <div class="col-md-6 offset-md-3 col-xs-12">
-              <h1 class="text-xs-center">Your Settings</h1>
+      <div class="col-md-6 offset-md-3 col-xs-12">
+        <h1 class="text-xs-center">Your Settings</h1>
 
-              <form>
-                <fieldset>
+        <form>
+          <fieldset>
+            <fieldset class="form-group">
+              <input class="form-control" type="text" placeholder="URL of profile picture">
+              </fieldset>
+              <fieldset class="form-group">
+                <input class="form-control form-control-lg" type="text" placeholder="Your Name">
+                </fieldset>
+                <fieldset class="form-group">
+                  <textarea class="form-control form-control-lg" rows="8" placeholder="Short bio about you"></textarea>
+                </fieldset>
+                <fieldset class="form-group">
+                  <input class="form-control form-control-lg" type="text" placeholder="Email">
+                  </fieldset>
                   <fieldset class="form-group">
-                    <input class="form-control" type="text" placeholder="URL of profile picture">
+                    <input class="form-control form-control-lg" type="password" placeholder="Password">
                     </fieldset>
+                    <button class="btn btn-lg btn-primary pull-xs-right">
+                      Update Settings
+                    </button>
+                  </fieldset>
+                </form>
+              </div>
+
+            </div>
+          </div>
+          """))
+
+  val createEdit = div(`class` := "editor-page", raw("""
+          <div class="container page">
+            <div class="row">
+
+              <div class="col-md-10 offset-md-1 col-xs-12">
+                <form>
+                  <fieldset>
                     <fieldset class="form-group">
-                      <input class="form-control form-control-lg" type="text" placeholder="Your Name">
+                      <input type="text" class="form-control form-control-lg" placeholder="Article Title">
                       </fieldset>
                       <fieldset class="form-group">
-                        <textarea class="form-control form-control-lg" rows="8" placeholder="Short bio about you"></textarea>
-                      </fieldset>
-                      <fieldset class="form-group">
-                        <input class="form-control form-control-lg" type="text" placeholder="Email">
+                        <input type="text" class="form-control" placeholder="What's this article about?">
                         </fieldset>
                         <fieldset class="form-group">
-                          <input class="form-control form-control-lg" type="password" placeholder="Password">
+                          <textarea class="form-control" rows="8" placeholder="Write your article (in markdown)"></textarea>
+                        </fieldset>
+                        <fieldset class="form-group">
+                          <input type="text" class="form-control" placeholder="Enter tags">
+                            <div class="tag-list"></div>
                           </fieldset>
-                          <button class="btn btn-lg btn-primary pull-xs-right">
-                            Update Settings
+                          <button class="btn btn-lg pull-xs-right btn-primary" type="button">
+                            Publish Article
                           </button>
                         </fieldset>
                       </form>
@@ -264,37 +291,6 @@ object Templates {
                 </div>
                 """))
 
-  val createEdit = div(`class` := "editor-page", raw("""
-                <div class="container page">
-                  <div class="row">
-
-                    <div class="col-md-10 offset-md-1 col-xs-12">
-                      <form>
-                        <fieldset>
-                          <fieldset class="form-group">
-                            <input type="text" class="form-control form-control-lg" placeholder="Article Title">
-                            </fieldset>
-                            <fieldset class="form-group">
-                              <input type="text" class="form-control" placeholder="What's this article about?">
-                              </fieldset>
-                              <fieldset class="form-group">
-                                <textarea class="form-control" rows="8" placeholder="Write your article (in markdown)"></textarea>
-                              </fieldset>
-                              <fieldset class="form-group">
-                                <input type="text" class="form-control" placeholder="Enter tags">
-                                  <div class="tag-list"></div>
-                                </fieldset>
-                                <button class="btn btn-lg pull-xs-right btn-primary" type="button">
-                                  Publish Article
-                                </button>
-                              </fieldset>
-                            </form>
-                          </div>
-
-                        </div>
-                      </div>
-                      """))
-
   def articleFromSlug(slug: Signal[String], articles: Signal[List[Article]]): Signal[TypedTag[Element]] = {
     Signal[TypedTag[Element]] {
       articles.value.find(_.slug == slug.value).map(articleTag).getOrElse(throw EmptySignalControlThrowable)
@@ -302,7 +298,6 @@ object Templates {
   }
 
   def articleTag(article: Article): TypedTag[Element] = {
-
     val authorTags = authorMeta(article)(followButton(article.author), raw("&nbsp;&nbsp;"), favoriteButton(article))
     val banner     = div(`class` := "banner",
                          div(`class` := "container",

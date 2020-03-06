@@ -1,31 +1,26 @@
 package de.tuda.conduit
 
-import de.tuda.conduit.API.{Author, User, UserReg}
+import de.tuda.conduit.API.Author
 import de.tuda.conduit.Navigation._
 import org.scalajs.dom
+import org.scalajs.dom.experimental.{Fetch, HttpMethod, RequestInit, URL}
+import org.scalajs.dom.raw.HashChangeEvent
+import rescala.core.{Pulse, Scheduler, Struct}
 import rescala.default._
 import rescala.extra.Tags._
 import rescala.extra.lattices.IdUtil
 import rescala.extra.lattices.IdUtil.Id
-import scalatags.JsDom.implicits.stringFrag
-import scalatags.JsDom.tags.body
-
-import scala.scalajs.js.URIUtils.decodeURIComponent
-import org.scalajs.dom.raw.HashChangeEvent
-import org.scalajs.dom.experimental.{AbortSignal, BodyInit, Fetch, HeadersInit, HttpMethod, ReferrerPolicy, RequestCache, RequestCredentials, RequestInit, RequestMode, RequestRedirect, URL}
-import rescala.core.{Pulse, Scheduler, Struct}
-import rescala.{default, reactives}
-import scalatags.jsdom.Frag
-
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSGlobal
+import rescala.levelbased.LevelStructImpl
 import rescala.reactives.RExceptions.EmptySignalControlThrowable
+import rescala.{default, reactives}
+import scalatags.JsDom.tags.body
 import upickle.default.ReadWriter
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.scalajs.js.{UndefOr, |}
-import scala.util.{Failure, Random, Success, Try}
+import scala.scalajs.js
+import scala.scalajs.js.annotation.JSGlobal
+import scala.util.Try
 
 
 //@JSImport("localforage", JSImport.Namespace)
@@ -79,6 +74,7 @@ object API {
   case class ProfileWrapper(profile: Author)
 
   case class ErrorMessages(errors: Map[String, List[String]])
+  case class CategoriesList(tags: List[String])
 
 
   implicit val AuthorRW        : ReadWriter[Author]         = upickle.default.macroRW
@@ -92,6 +88,7 @@ object API {
   implicit val UserWrapperRW   : ReadWriter[UserWrapper]    = upickle.default.macroRW
   implicit val ErrorMessagesRW : ReadWriter[ErrorMessages]  = upickle.default.macroRW
   implicit val ProfileWrapperRW: ReadWriter[ProfileWrapper] = upickle.default.macroRW
+  implicit val CategoriesListRW: ReadWriter[CategoriesList] = upickle.default.macroRW
 
   def fetchtext(endpoint: String, method: HttpMethod = HttpMethod.GET, body: Option[String] = None): Future[String] = {
 
@@ -103,7 +100,7 @@ object API {
     }
 
     Fetch.fetch(baseurl + endpoint, ri).toFuture.flatMap(_.text().toFuture)
-    .andThen{case resp => println(resp)}
+         .andThen { case resp => println(resp) }
   }
 
   def articles(): Future[List[Article]] =
@@ -135,14 +132,14 @@ object API {
     val serializedUser = upickle.default.write(UserRegWrapper(user))
     println(serializedUser)
     fetchtext(endpoint, HttpMethod.POST, Some(serializedUser))
-         .map { response =>
-           try {Right(upickle.default.read[UserWrapper](response).user)}
-           catch {
-             case error: Throwable =>
-               println(error)
-               Left(upickle.default.read[ErrorMessages](response))
-           }
-         }
+    .map { response =>
+      try {Right(upickle.default.read[UserWrapper](response).user)}
+      catch {
+        case error: Throwable =>
+          println(error)
+          Left(upickle.default.read[ErrorMessages](response))
+      }
+    }
 
   }
 
@@ -165,10 +162,20 @@ object API {
       loginresult.map[Option[User]](_.toOption).latest(restored.flatten)
     }
 
-  val errorMessages: Signal[Option[ErrorMessages]] = loginresult.map(_.swap.toOption).latest(None)
+  val loginRegisterErrors: Signal[Option[ErrorMessages]] = loginresult.map(_.swap.toOption).latest(None)
+  Templates.authentication.loginUser.observe(login.pull(_))
+  Templates.authentication.registerUser.observe(register.pull(_))
 
-  Templates.authentication.loginUser.observe(login(_))
-  Templates.authentication.registerUser.observe(register(_))
+
+  def categoriesFun(): Future[List[String]] = {
+    fetchtext("tags")
+    .map { response =>
+      upickle.default.read[CategoriesList](response).tags
+    }
+  }
+
+  val categoriesEvent: PullEvent[Unit, List[String], default.Structure] = PullEvent.from(_ => categoriesFun())
+  val categories = categoriesEvent.event.latest()
 
 }
 
@@ -185,7 +192,7 @@ object StorageManager {
 }
 
 trait PullEvent[A, T, S <: Struct] {
-  def apply(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T]
+  def pull(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T]
   def event: rescala.reactives.Event[T, S]
 }
 
@@ -193,7 +200,7 @@ object PullEvent {
   def from[A, T, S <: Struct](callback: A => Future[T])(implicit creationTicket: rescala.core.CreationTicket[S]): PullEvent[A, T, S] = {
     val evt = rescala.reactives.Evt[T, S]()(creationTicket)
     new PullEvent[A, T, S] {
-      override def apply(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T] = {
+      override def pull(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T] = {
         callback(value).andThen { case res =>
           scheduler.forceNewTransaction(evt) { at =>
             evt.admitPulse(Pulse.fromTry(res))(at)
@@ -231,19 +238,34 @@ object ConduitFrontend {
 
     val profileTag = Templates.profile(profileEvent.event.latest[Author])
 
+    val currentCategory = currentAppState.map {
+      case Category(name) => Some(name)
+      case _              => None
+    }
+
+    val tagArticles = currentCategory.map {
+      case Some(name) => mainArticles.value.filter(_.tagList.contains(name))
+      case None       => Nil
+    }
+
+    val categoriesTag = scalatags.JsDom.all.bindNode(Templates.categoriesList(API.categories).render)
+
+    API.categoriesEvent.pull(())
+
 
     dom.document.body = body(Templates.navTag(Navigation.currentAppState, API.currentUser),
                              Signal {
                                Navigation.currentAppState.value match {
-                                 case Index             => Templates.articleList(mainArticles)
+                                 case Index             => Templates.articleList(mainArticles, categoriesTag)
                                  case Settings          => Templates.settings
-                                 case Register          => Templates.authentication.register(API.errorMessages)
-                                 case Login             => Templates.authentication.login(API.errorMessages)
+                                 case Register          => Templates.authentication.register(API.loginRegisterErrors)
+                                 case Login             => Templates.authentication.login(API.loginRegisterErrors)
                                  case Compose           => Templates.createEdit
                                  case Profile(username) =>
-                                   profileEvent(username)
+                                   profileEvent.pull(username)
                                    profileTag
                                  case Reader(slug)      => currentArticle.value
+                                 case Category(tagname) => Templates.articleList(tagArticles, categoriesTag)
                                }
                              }.asModifier,
                              Templates.footerTag).render
@@ -264,13 +286,13 @@ object Navigation {
       val paths = List(path.substring(1).split("/"): _*)
       scribe.debug(s"get state for $paths")
       paths match {
-        case Nil | "" :: Nil              => Index
         case "settings" :: Nil            => Settings
         case "login" :: Nil               => Login
         case "register" :: Nil            => Register
         case "compose" :: Nil             => Compose
         case "reader" :: slug :: Nil      => Reader(slug)
         case "profile" :: username :: Nil => Profile(username)
+        case "tag" :: tagname :: Nil      => Category(tagname)
         case _                            => Index
       }
     }
@@ -282,6 +304,7 @@ object Navigation {
   case object Compose extends AppState("compose")
   case class Profile(username: String) extends AppState(s"profile/$username")
   case class Reader(slug: String) extends AppState(s"reader/$slug")
+  case class Category(name: String) extends AppState(s"tag/$name")
 
 
   def getHash: String = {
