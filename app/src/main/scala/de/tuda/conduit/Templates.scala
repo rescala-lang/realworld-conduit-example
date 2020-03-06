@@ -98,7 +98,6 @@ object Templates {
 
   def articleList(articles: Signal[List[Article]], categories: Modifier) = {
     div(`class` := "home-page",
-        headerBannerTag,
         div(`class` := "container page",
             div(`class` := "row",
                 div(`class` := "col-md-9", feedToggle)(

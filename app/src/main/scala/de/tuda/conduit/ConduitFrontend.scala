@@ -3,16 +3,15 @@ package de.tuda.conduit
 import de.tuda.conduit.API.Author
 import de.tuda.conduit.Navigation._
 import org.scalajs.dom
-import org.scalajs.dom.experimental.{Fetch, HttpMethod, RequestInit, URL}
+import org.scalajs.dom.experimental.URL
 import org.scalajs.dom.raw.HashChangeEvent
 import rescala.core.{Pulse, Scheduler, Struct}
 import rescala.default._
 import rescala.extra.Tags._
 import rescala.extra.lattices.IdUtil
 import rescala.extra.lattices.IdUtil.Id
-import rescala.levelbased.LevelStructImpl
+import rescala.reactives
 import rescala.reactives.RExceptions.EmptySignalControlThrowable
-import rescala.{default, reactives}
 import scalatags.JsDom.tags.body
 import upickle.default.ReadWriter
 
@@ -36,148 +35,7 @@ trait LocalForageInstance extends js.Object {
   def getItem[T](key: String): js.Promise[T] = js.native
 }
 
-object API {
-  val baseurl = "https://conduit.productionready.io/api/"
 
-
-  case class Author(username: String,
-                    @deprecated("could be null, use biography instead", "") bio: String,
-                    image: String = "",
-                    following: Boolean = false) {
-    def url: String = Navigation.Profile(username).url
-    def biography: Option[String] = Option(bio)
-  }
-
-  case class Article(slug: String,
-                     title: String,
-                     description: String,
-                     body: String,
-                     tagList: List[String],
-                     createdAt: String,
-                     updatedAt: String,
-                     favorited: Boolean,
-                     favoritesCount: Int,
-                     author: Author) {
-
-    def url: String = Navigation.Reader(slug).url
-  }
-
-  case class ArticleList(articles: List[Article], articlesCount: Int)
-
-  case class Comment(id: Int, createdAt: String, updatedAt: String, body: String, author: Author)
-  case class CommentList(comments: List[Comment])
-
-  case class UserReg(username: String = "", password: String, email: String, bio: String = "", image: String = "")
-  case class User(id: Int, token: String, username: String, email: String, bio: Option[String] = None, image: Option[String] = None)
-  case class UserRegWrapper(user: UserReg)
-  case class UserWrapper(user: User)
-  case class ProfileWrapper(profile: Author)
-
-  case class ErrorMessages(errors: Map[String, List[String]])
-  case class CategoriesList(tags: List[String])
-
-
-  implicit val AuthorRW        : ReadWriter[Author]         = upickle.default.macroRW
-  implicit val ArticleRW       : ReadWriter[Article]        = upickle.default.macroRW
-  implicit val ArticleListRW   : ReadWriter[ArticleList]    = upickle.default.macroRW
-  implicit val CommentRW       : ReadWriter[Comment]        = upickle.default.macroRW
-  implicit val CommentListRW   : ReadWriter[CommentList]    = upickle.default.macroRW
-  implicit val UserRW          : ReadWriter[User]           = upickle.default.macroRW
-  implicit val UserRegRW       : ReadWriter[UserReg]        = upickle.default.macroRW
-  implicit val UserRegWrapperRW: ReadWriter[UserRegWrapper] = upickle.default.macroRW
-  implicit val UserWrapperRW   : ReadWriter[UserWrapper]    = upickle.default.macroRW
-  implicit val ErrorMessagesRW : ReadWriter[ErrorMessages]  = upickle.default.macroRW
-  implicit val ProfileWrapperRW: ReadWriter[ProfileWrapper] = upickle.default.macroRW
-  implicit val CategoriesListRW: ReadWriter[CategoriesList] = upickle.default.macroRW
-
-  def fetchtext(endpoint: String, method: HttpMethod = HttpMethod.GET, body: Option[String] = None): Future[String] = {
-
-    val ri = js.Dynamic.literal(method = method).asInstanceOf[RequestInit]
-
-    body.foreach { content =>
-      ri.body = content
-      ri.headers = js.Dictionary("Content-Type" -> "application/json;charset=utf-8")
-    }
-
-    Fetch.fetch(baseurl + endpoint, ri).toFuture.flatMap(_.text().toFuture)
-         .andThen { case resp => println(resp) }
-  }
-
-  def articles(): Future[List[Article]] =
-    fetchtext("articles")
-    .map { response =>
-      upickle.default.read[ArticleList](response).articles
-    }
-
-  def comments(slug: String): Future[List[Comment]] = {
-    fetchtext(s"articles/$slug/comments")
-    .map { response =>
-      upickle.default.read[CommentList](response).comments
-    }
-  }
-
-  def userprofile(username: String): Future[Author] = {
-    fetchtext(s"profiles/$username")
-    .map { response =>
-      try upickle.default.read[ProfileWrapper](response).profile
-      catch {
-        case error: Throwable =>
-          println(response)
-          throw error
-      }
-    }
-  }
-
-  def loginRegisterFun(user: UserReg, endpoint: String): Future[Either[ErrorMessages, User]] = {
-    val serializedUser = upickle.default.write(UserRegWrapper(user))
-    println(serializedUser)
-    fetchtext(endpoint, HttpMethod.POST, Some(serializedUser))
-    .map { response =>
-      try {Right(upickle.default.read[UserWrapper](response).user)}
-      catch {
-        case error: Throwable =>
-          println(error)
-          Left(upickle.default.read[ErrorMessages](response))
-      }
-    }
-
-  }
-
-  def registerFun(user: UserReg): Future[Either[ErrorMessages, User]] = {
-    loginRegisterFun(user, endpoint = "users")
-
-  }
-
-  def loginFun(user: UserReg): Future[Either[ErrorMessages, User]] = {
-    loginRegisterFun(user, endpoint = "users/login")
-  }
-
-  val login   : PullEvent[UserReg, Either[ErrorMessages, User], default.Structure] = PullEvent.from(loginFun)
-  val register: PullEvent[UserReg, Either[ErrorMessages, User], default.Structure] = PullEvent.from(registerFun)
-
-
-  val loginresult                       = login.event || register.event
-  val currentUser: Signal[Option[User]] =
-    StorageManager.stored[Option[User]]("currentUser") { restored =>
-      loginresult.map[Option[User]](_.toOption).latest(restored.flatten)
-    }
-
-  val loginRegisterErrors: Signal[Option[ErrorMessages]] = loginresult.map(_.swap.toOption).latest(None)
-  Templates.authentication.loginUser.observe(login.pull(_))
-  Templates.authentication.registerUser.observe(register.pull(_))
-
-
-  def categoriesFun(): Future[List[String]] = {
-    fetchtext("tags")
-    .map { response =>
-      upickle.default.read[CategoriesList](response).tags
-    }
-  }
-
-  val categoriesEvent: PullEvent[Unit, List[String], default.Structure] = PullEvent.from(_ => categoriesFun())
-  val categories = categoriesEvent.event.latest()
-
-}
 
 object StorageManager {
   val storage = dom.window.localStorage
