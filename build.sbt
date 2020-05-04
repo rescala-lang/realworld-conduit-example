@@ -16,7 +16,6 @@ lazy val server = project
 .settings(
   name := "server",
   toml,
-  upickle,
   betterFiles,
   scribe,
   scalatags,
@@ -25,7 +24,7 @@ lazy val server = project
   (Compile / compile) := ((Compile / compile) dependsOn vbundle).value,
   libraryDependencies ++= Seq(
     "com.outr" %% "scribe-slf4j" % "2.7.10",
-    "io.javalin" % "javalin" % "3.6.0"
+    "io.javalin" % "javalin" % "3.8.0"
     ),
   fork := true,
   // must run sbt with graalvm to work
@@ -53,7 +52,6 @@ lazy val app = project
   name := "app",
   scalaJSUseMainModuleInitializer := true,
   scalatags,
-  upickle,
   )
 .dependsOn(sharedJS)
 // .dependsOn(rescalatags)
@@ -63,6 +61,7 @@ lazy val app = project
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
 .crossType(CrossType.Pure).in(file("common"))
 .settings(
+  upickle,
   libraryDependencies += "de.tuda.stg" %%% "rescala" %"0.30.0",
   loci.wsJavalin,
   name := "common",

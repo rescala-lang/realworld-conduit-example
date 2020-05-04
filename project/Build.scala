@@ -136,7 +136,7 @@ object Dependencies {
   val scribe       = ld += "com.outr" %%% "scribe" % "[2.7.0,2.8.0)"
   val sourcecode   = ld += "com.lihaoyi" %%% "sourcecode" % "0.2.1"
   val toml         = ld += "tech.sparse" %%% "toml-scala" % "0.2.2"
-  val upickle      = ld += "com.lihaoyi" %% "upickle" % "1.1.0"
+  val upickle      = ld += "com.lihaoyi" %%% "upickle" % "1.1.0"
 
   val akkaVersion = "2.6.5"
   val akkaHttp = ld ++= (Seq("akka-http-core",
@@ -155,7 +155,7 @@ object Dependencies {
 
   // frontend
   val normalizecss      = ld += "org.webjars.npm" % "normalize.css" % "8.0.1"
-  val scalatagsVersion  = "0.9.0"
+  val scalatagsVersion  = "0.9.1"
   val scalatags         = ld += "com.lihaoyi" %%% "scalatags" % scalatagsVersion
   val scalajsdomVersion = "1.0.0"
   val scalajsdom        = ld += "org.scala-js" %%% "scalajs-dom" % scalajsdomVersion
