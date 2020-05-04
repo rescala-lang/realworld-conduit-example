@@ -11,8 +11,6 @@ inThisBuild(scalaVersion_212)
 inThisBuild(strictCompile)
 ThisBuild / organization := "de.rmgk"
 
-bloopSources
-
 lazy val server = project
 .in(file("server"))
 .settings(
@@ -44,8 +42,8 @@ lazy val server = project
 .enablePlugins(JavaServerAppPackaging)
 .enablePlugins(GraalVMNativeImagePlugin)
 .dependsOn(sharedJVM)
-.dependsOn(rescalaJVM)
-.dependsOn(lociCommunicatorWsJavalinJVM)
+// .dependsOn(rescalaJVM)
+// .dependsOn(lociCommunicatorWsJavalinJVM)
 
 
 lazy val app = project
@@ -58,13 +56,15 @@ lazy val app = project
   upickle,
   )
 .dependsOn(sharedJS)
-.dependsOn(rescalatags)
-.dependsOn(lociCommunicatorWsJavalinJS)
+// .dependsOn(rescalatags)
+// .dependsOn(lociCommunicatorWsJavalinJS)
 .enablePlugins(SbtSassify)
 
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
 .crossType(CrossType.Pure).in(file("common"))
 .settings(
+  libraryDependencies += "de.tuda.stg" %%% "rescala" %"0.30.0",
+  loci.wsJavalin,
   name := "common",
   )
 
@@ -84,15 +84,15 @@ nativeImage := (server / GraalVMNativeImage / packageBin).value
 
 
 
-lazy val rescalaRepo = uri("../REScala")
-lazy val rescalatags = ProjectRef(rescalaRepo, "rescalaJS")
-lazy val rescalaJVM  = ProjectRef(rescalaRepo, "rescalaJVM")
-lazy val crdtsJVM    = ProjectRef(rescalaRepo, "crdtsJVM")
-lazy val crdtsJS     = ProjectRef(rescalaRepo, "crdtsJS")
+// lazy val rescalaRepo = uri("../REScala")
+// lazy val rescalatags = ProjectRef(rescalaRepo, "rescalaJS")
+// lazy val rescalaJVM  = ProjectRef(rescalaRepo, "rescalaJVM")
+// lazy val crdtsJVM    = ProjectRef(rescalaRepo, "crdtsJVM")
+// lazy val crdtsJS     = ProjectRef(rescalaRepo, "crdtsJS")
 
-lazy val lociRepo                     = uri("../loci")
-lazy val lociCommunicatorWsJavalinJVM = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJVM")
-lazy val lociCommunicatorWsJavalinJS  = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJS")
+// lazy val lociRepo                     = uri("../loci")
+// lazy val lociCommunicatorWsJavalinJVM = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJVM")
+// lazy val lociCommunicatorWsJavalinJS  = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJS")
 
 
 
