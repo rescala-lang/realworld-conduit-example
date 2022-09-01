@@ -7,8 +7,6 @@ import Settings._
 import Dependencies._
 
 
-ThisBuild / organization := "de.rmgk"
-
 lazy val server = project
 .in(file("server"))
 .settings(
@@ -18,8 +16,8 @@ lazy val server = project
   fetchJSDependenciesDef,
   (Compile / compile) := ((Compile / compile) dependsOn vbundle).value,
   libraryDependencies ++= Seq(
-    "com.outr" %% "scribe-slf4j" % "2.7.10",
-    "io.javalin" % "javalin" % "3.8.0",
+    "com.outr" %% "scribe-slf4j" % "3.8.3",
+    "io.javalin" % "javalin" % "4.6.4",
     tomlScala.value,
     betterFiles.value,
     scribe.value,
@@ -114,7 +112,8 @@ val vbundleDef = vbundle := {
   val bundleTarget = target.value.toPath.resolve("resources/static")
   Files.createDirectories(bundleTarget)
 
-  def gzipToTarget(f: File): Unit = IO.gzip(f, bundleTarget.resolve(f.name + ".gz").toFile)
+  def gzipToTarget(f: File): Unit = //IO.gzipFile(f, bundleTarget.resolve(f.name + ".gz").toFile)
+    IO.copyFile(f, bundleTarget.resolve(f.name).toFile)
 
   gzipToTarget(jsfile)
   gzipToTarget(jsfile.toPath.getParent.resolve(jsfile.name + ".map").toFile)

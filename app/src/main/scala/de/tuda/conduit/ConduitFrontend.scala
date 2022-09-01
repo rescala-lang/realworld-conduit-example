@@ -1,20 +1,20 @@
 package de.tuda.conduit
 
-import de.tuda.conduit.API.{ArticleDraft, Author}
+import de.tuda.conduit.API.Author
 import de.tuda.conduit.Navigation._
 import org.scalajs.dom
-import org.scalajs.dom.experimental.URL
-import org.scalajs.dom.raw.HashChangeEvent
-import rescala.core.{Pulse, Scheduler, Struct}
+import org.scalajs.dom.URL
+import org.scalajs.dom.HashChangeEvent
 import rescala.default._
 import rescala.extra.Tags._
 import rescala.extra.lattices.IdUtil
 import rescala.extra.lattices.IdUtil.Id
-import rescala.reactives
-import rescala.reactives.RExceptions.EmptySignalControlThrowable
+import rescala.operator.Pulse
+import rescala.operator.RExceptions.EmptySignalControlThrowable
 import scalatags.JsDom.tags.body
 import upickle.default.ReadWriter
 
+import scala.annotation.nowarn
 import scala.concurrent.{ExecutionContext, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
@@ -25,11 +25,13 @@ import scala.util.Try
 //@JSImport("localforage", JSImport.Namespace)
 @JSGlobal
 @js.native
+@nowarn
 object localforage extends js.Object with LocalForageInstance {
   def createInstance(config: js.Any): LocalForageInstance = js.native
 }
 
 @js.native
+@nowarn
 trait LocalForageInstance extends js.Object {
   def setItem(key: String, value: js.Any): js.Promise[Unit] = js.native
   def getItem[T](key: String): js.Promise[T] = js.native
@@ -48,23 +50,23 @@ object StorageManager {
   }
 }
 
-trait PullEvent[A, T, S <: Struct] {
-  def pull(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T]
-  def event: rescala.reactives.Event[T, S]
+trait PullEvent[A, T] {
+  def pull(value: A)(implicit scheduler: Scheduler, executor: ExecutionContext): Future[T]
+  def event: Event[T]
 }
 
 object PullEvent {
-  def from[A, T, S <: Struct](callback: A => Future[T])(implicit creationTicket: rescala.core.CreationTicket[S]): PullEvent[A, T, S] = {
-    val evt = rescala.reactives.Evt[T, S]()(creationTicket)
-    new PullEvent[A, T, S] {
-      override def pull(value: A)(implicit scheduler: Scheduler[S], executor: ExecutionContext): Future[T] = {
+  def from[A, T](callback: A => Future[T])(implicit creationTicket: CreationTicket): PullEvent[A, T] = {
+    val evt = Evt[T]()(creationTicket)
+    new PullEvent[A, T] {
+      override def pull(value: A)(implicit scheduler: Scheduler, executor: ExecutionContext): Future[T] = {
         callback(value).andThen { case res =>
           scheduler.forceNewTransaction(evt) { at =>
             evt.admitPulse(Pulse.fromTry(res))(at)
           }
         }
       }
-      override def event: reactives.Event[T, S] = evt
+      override def event: Event[T] = evt
     }
   }
 }
@@ -83,8 +85,8 @@ object ConduitFrontend {
     //
     //API.register(user).onComplete(println)
 
-    Templates.authentication.loginUser.observe(API.login.pull(_))
-    Templates.authentication.registerUser.observe(API.register.pull(_))
+    Templates.authentication.loginUser.observe{x => API.login.pull(x); ()}
+    Templates.authentication.registerUser.observe{x => API.register.pull(x); ()}
     Templates.writeArticle.draftEvent
              .collect { Function.unlift(draft => API.currentUser.value.map(draft -> _)) }
              .observe { case (draft, user) =>
@@ -103,7 +105,7 @@ object ConduitFrontend {
 
     val profileEvent = PullEvent.from(API.userprofile)
 
-    val profileTag = Templates.profile(profileEvent.event.latest[Author])
+    val profileTag = Templates.profile(profileEvent.event.latest[Author]())
 
     val currentCategory = currentAppState.map {
       case Category(name) => Some(name)
@@ -150,7 +152,7 @@ object Navigation {
   }
   object AppState {
     def parse(path: String): AppState = {
-      val paths = List(path.substring(1).split("/"): _*)
+      val paths = path.substring(1).split("/").toList
       scribe.debug(s"get state for $paths")
       paths match {
         case "settings" :: Nil            => Settings

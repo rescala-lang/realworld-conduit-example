@@ -7,7 +7,7 @@ import scalatags.JsDom.all._
 import scalatags.JsDom.tags2.{SeqFrag => _, _}
 import rescala.default._
 import rescala.extra.Tags._
-import rescala.reactives.RExceptions.EmptySignalControlThrowable
+import rescala.operator.RExceptions.EmptySignalControlThrowable
 import scalatags.JsDom.TypedTag
 
 object Templates {
@@ -150,12 +150,12 @@ object Templates {
                               `type` := "password",
                               placeholder := "Password").render
 
-    private val registerEvt = Evt[Any]
+    private val registerEvt = Evt[Any]()
     val registerUser = registerEvt.map { _ =>
       UserReg(username = nameInput.value, password = passwordInput.value, email = mailInput.value)
     }
 
-    private val loginEvt = Evt[Any]
+    private val loginEvt = Evt[Any]()
     val loginUser = loginEvt.map { _ =>
       UserReg(password = passwordInput.value, email = mailInput.value)
     }

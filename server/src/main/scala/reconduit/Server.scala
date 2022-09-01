@@ -2,6 +2,7 @@ package reconduit
 
 import better.files._
 import io.javalin.Javalin
+import io.javalin.http.Handler
 import loci.communicator.ws.javalin.WS.Properties
 import loci.registry.Registry
 import scalatags.Text.all._
@@ -27,30 +28,33 @@ object Server {
     val websocket = loci.communicator.ws.javalin.WS(app, "ws", Properties())
     val registry  = new Registry
 
-    val resources = List("localforage.min.js.gz", "app-fastopt.js.map.gz", "app-fastopt.js.gz")
+    val resources = List("localforage.min.js", "app-fastopt.js.map", "app-fastopt.js")
 
     def noZip(s: String) = if (s.endsWith(".gz")) s.substring(0, s.length - 3) else s
 
-    val main = "<!DOCTYPE html>" + html(raw(head), body("executing JS …")(resources.filter(_.endsWith(".js.gz")).map(noZip).map(p => script(src := p)))).render
+    val main = "<!DOCTYPE html>" + html(raw(head), body("executing JS …")(resources.filter(_.endsWith(".js")).map(noZip).map(p => script(src := p)))).render
 
     for {
       path <- resources
     } {
-      app.get(s"/${noZip(path)}", ctx => {
+      app.get(s"/${noZip(path)}", (ctx => {
         if (path.endsWith(".js.gz")) ctx.contentType("application/javascript")
         if (path.endsWith(".gz")) ctx.header("Content-Encoding", "gzip")
         ctx.result(File(s"target/resources/static/$path").newInputStream.buffered)
-      })
+        ()
+      }): Handler)
     }
 
 
-    app.get("/", ctx => {
+    app.get("/", (ctx => {
       ctx.contentType("text/html; charset=UTF-8")
       ctx.status(200)
       ctx.result(main)
-    })
+      ()
+    }): Handler)
 
     registry.listen(websocket)
+    ()
 
   }
 

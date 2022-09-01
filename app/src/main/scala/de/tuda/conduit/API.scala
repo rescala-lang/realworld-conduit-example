@@ -1,6 +1,6 @@
 package de.tuda.conduit
 
-import org.scalajs.dom.experimental.{Fetch, HttpMethod, RequestInit}
+import org.scalajs.dom.{Fetch, HttpMethod, RequestInit}
 import rescala.default._
 import upickle.default._
 
@@ -139,8 +139,8 @@ object API {
     loginRegisterFun(user, endpoint = "users/login")
   }
 
-  val login   : PullEvent[UserReg, Either[ErrorMessages, User], REStructure] = PullEvent.from(loginFun)
-  val register: PullEvent[UserReg, Either[ErrorMessages, User], REStructure] = PullEvent.from(registerFun)
+  val login   : PullEvent[UserReg, Either[ErrorMessages, User]] = PullEvent.from(loginFun)
+  val register: PullEvent[UserReg, Either[ErrorMessages, User]] = PullEvent.from(registerFun)
 
 
   val loginresult                       = login.event || register.event
@@ -164,7 +164,7 @@ object API {
     }
   }
 
-  val categoriesEvent: PullEvent[Unit, List[String], REStructure] = PullEvent.from(_ => categoriesFun())
+  val categoriesEvent: PullEvent[Unit, List[String]] = PullEvent.from(_ => categoriesFun())
 
   val categories = categoriesEvent.event.latest()
 
