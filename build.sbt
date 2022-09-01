@@ -7,24 +7,23 @@ import Settings._
 import Dependencies._
 
 
-inThisBuild(scalaVersion_212)
-inThisBuild(strictCompile)
 ThisBuild / organization := "de.rmgk"
 
 lazy val server = project
 .in(file("server"))
 .settings(
+  scalaVersion_213,
   name := "server",
-  toml,
-  betterFiles,
-  scribe,
-  scalatags,
   vbundleDef,
   fetchJSDependenciesDef,
   (Compile / compile) := ((Compile / compile) dependsOn vbundle).value,
   libraryDependencies ++= Seq(
     "com.outr" %% "scribe-slf4j" % "2.7.10",
-    "io.javalin" % "javalin" % "3.8.0"
+    "io.javalin" % "javalin" % "3.8.0",
+    tomlScala.value,
+    betterFiles.value,
+    scribe.value,
+    scalatags.value,
     ),
   fork := true,
   // must run sbt with graalvm to work
@@ -41,8 +40,6 @@ lazy val server = project
 .enablePlugins(JavaServerAppPackaging)
 .enablePlugins(GraalVMNativeImagePlugin)
 .dependsOn(sharedJVM)
-// .dependsOn(rescalaJVM)
-// .dependsOn(lociCommunicatorWsJavalinJVM)
 
 
 lazy val app = project
@@ -50,48 +47,28 @@ lazy val app = project
 .enablePlugins(ScalaJSPlugin)
 .settings(
   name := "app",
+  scalaVersion_213,
   scalaJSUseMainModuleInitializer := true,
-  scalatags,
+  libraryDependencies += scalatags.value,
   )
 .dependsOn(sharedJS)
-// .dependsOn(rescalatags)
-// .dependsOn(lociCommunicatorWsJavalinJS)
 .enablePlugins(SbtSassify)
 
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
 .crossType(CrossType.Pure).in(file("common"))
 .settings(
-  upickle,
-  libraryDependencies += "de.tuda.stg" %%% "rescala" %"0.30.0",
-  loci.wsJavalin,
+  scalaVersion_213,
+  jitpackResolver,
+  libraryDependencies ++= Seq(
+    "de.tu-darmstadt.stg" %%% "rescala" %"0.31.0",
+    upickle.value,
+    loci.wsJavalin.value
+  ),
   name := "common",
   )
 
 lazy val sharedJVM = shared.jvm
 lazy val sharedJS  = shared.js
-
-
-
-
-
-
-
-lazy val nativeImage = taskKey[File]("calls graalvm native image")
-
-nativeImage := (server / GraalVMNativeImage / packageBin).value
-
-
-
-
-// lazy val rescalaRepo = uri("../REScala")
-// lazy val rescalatags = ProjectRef(rescalaRepo, "rescalaJS")
-// lazy val rescalaJVM  = ProjectRef(rescalaRepo, "rescalaJVM")
-// lazy val crdtsJVM    = ProjectRef(rescalaRepo, "crdtsJVM")
-// lazy val crdtsJS     = ProjectRef(rescalaRepo, "crdtsJS")
-
-// lazy val lociRepo                     = uri("../loci")
-// lazy val lociCommunicatorWsJavalinJVM = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJVM")
-// lazy val lociCommunicatorWsJavalinJS  = ProjectRef(lociRepo, "lociCommunicatorWsJavalinJS")
 
 
 

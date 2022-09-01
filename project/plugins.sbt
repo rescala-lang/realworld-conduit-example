@@ -1,24 +1,28 @@
-/** This file is shared between multiple projects
-  * and may contain unused dependencies */
-
-// scalajs 0.6
-// addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler-sjs06" % "0.17.0") // https://github.com/scalacenter/scalajs-bundler
-// addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "0.6.1")
-// addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.32")
+/* This file is shared between multiple projects
+ * and may contain unused dependencies */
 
 // scalajs 1.0
-addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler" % "0.17.0") // https://github.com/scalacenter/scalajs-bundler
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.0.0")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.0.1")
-libraryDependencies += "org.scala-js" %% "scalajs-env-jsdom-nodejs" % "1.0.0"
+addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler" % "0.20.0") // https://github.com/scalacenter/scalajs-bundler
+addSbtPlugin("org.scala-js"  % "sbt-scalajs"         % "1.10.1")
+libraryDependencies += "org.scala-js" %% "scalajs-env-jsdom-nodejs" % "1.1.0"
 
-addSbtPlugin("org.irundaia.sbt" % "sbt-sassify" % "1.4.13")
+// scalanative
+addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.4.5")
 
-// operations
-addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.0.0") // https://github.com/dwijnand/sbt-dynver
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.7.0") // https://github.com/sbt/sbt-native-packager
+// crossbuilding
+addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"      % "1.2.0")
+addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.2.0")
+
+// sbt settings
+addSbtPlugin("com.dwijnand"              % "sbt-dynver"    % "4.1.1") // https://github.com/dwijnand/sbt-dynver
+addSbtPlugin("com.eed3si9n"              % "sbt-buildinfo" % "0.11.0")
+addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat"  % "0.3.1") // https://github.com/typelevel/sbt-tpolecat
+
+// packaging
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.11") // https://github.com/sbt/sbt-native-packager
+addSbtPlugin("org.scalameta"  % "sbt-native-image"    % "0.3.2") // https://github.com/scalameta/sbt-native-image
+addSbtPlugin("com.github.sbt" % "sbt-pgp"             % "2.1.2")
 
 // tooling
-addSbtPlugin("org.tpolecat" % "tut-plugin" % "0.6.13")
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.7")
-
+addSbtPlugin("pl.project13.scala" % "sbt-jmh"     % "0.4.3")
+addSbtPlugin("org.irundaia.sbt"   % "sbt-sassify" % "1.5.1")
