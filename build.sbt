@@ -10,7 +10,7 @@ import Dependencies._
 lazy val server = project
 .in(file("server"))
 .settings(
-  scalaVersion_213,
+  scalaVersion_3,
   name := "server",
   vbundleDef,
   fetchJSDependenciesDef,
@@ -18,7 +18,6 @@ lazy val server = project
   libraryDependencies ++= Seq(
     "com.outr" %% "scribe-slf4j" % "3.8.3",
     "io.javalin" % "javalin" % "4.6.4",
-    tomlScala.value,
     betterFiles.value,
     scribe.value,
     scalatags.value,
@@ -45,7 +44,7 @@ lazy val app = project
 .enablePlugins(ScalaJSPlugin)
 .settings(
   name := "app",
-  scalaVersion_213,
+  scalaVersion_3,
   scalaJSUseMainModuleInitializer := true,
   libraryDependencies += scalatags.value,
   )
@@ -55,7 +54,7 @@ lazy val app = project
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
 .crossType(CrossType.Pure).in(file("common"))
 .settings(
-  scalaVersion_213,
+  scalaVersion_3,
   jitpackResolver,
   libraryDependencies ++= Seq(
     "com.github.rescala-lang.rescala" %%% "rescala" %"6d9019e946",
