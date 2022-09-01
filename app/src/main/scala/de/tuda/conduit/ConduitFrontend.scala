@@ -2,13 +2,13 @@ package de.tuda.conduit
 
 import de.tuda.conduit.API.Author
 import de.tuda.conduit.Navigation._
+import kofre.base.Defs
 import org.scalajs.dom
 import org.scalajs.dom.URL
 import org.scalajs.dom.HashChangeEvent
 import rescala.default._
 import rescala.extra.Tags._
-import rescala.extra.lattices.IdUtil
-import rescala.extra.lattices.IdUtil.Id
+import kofre.base.Defs.Id
 import rescala.operator.Pulse
 import rescala.operator.RExceptions.EmptySignalControlThrowable
 import scalatags.JsDom.tags.body
@@ -75,7 +75,7 @@ object PullEvent {
 object ConduitFrontend {
 
 
-  val replicaID: Id = IdUtil.genId()
+  val replicaID: Id = Defs.genId()
 
   def main(args: Array[String]): Unit = {
 

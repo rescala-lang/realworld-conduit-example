@@ -58,7 +58,8 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
   scalaVersion_213,
   jitpackResolver,
   libraryDependencies ++= Seq(
-    "de.tu-darmstadt.stg" %%% "rescala" %"0.31.0",
+    "com.github.rescala-lang.rescala" %%% "rescala" %"6d9019e946",
+    ("com.github.rescala-lang.rescala" %%% "kofre" %"6d9019e946").cross(CrossVersion.for2_13Use3),
     upickle.value,
     loci.wsJavalin.value
   ),
